@@ -21,27 +21,27 @@ class EnergieCardEditor extends LitElement {
   render() {
     if (!this.hass || !this._config) return html``;
     const schemas = [
-      [ 
+      [ // Onglet Sources avec réglages titre/badges
         { name: "title", label: "Titre du Dashboard", selector: { text: {} } },
+        { name: "title_size", label: "Taille du Titre (px)", selector: { number: { min: 10, max: 40, mode: "slider" } } },
+        { name: "badge_size", label: "Taille Consos/Autonomie (px)", selector: { number: { min: 8, max: 30, mode: "slider" } } },
         { name: "solar", label: "Production Marstek (W)", selector: { entity: { domain: "sensor" } } },
         { name: "linky", label: "ZLinky SINSTS (W)", selector: { entity: { domain: "sensor" } } }
       ],
-      [ 
+      [ // Onglet Batteries
         { name: "battery1", label: "Batterie 1 (%)", selector: { entity: { domain: "sensor" } } },
         { name: "battery2", label: "Batterie 2 (%)", selector: { entity: { domain: "sensor" } } },
         { name: "battery3", label: "Batterie 3 (%)", selector: { entity: { domain: "sensor" } } }
       ],
-      [ 
+      [ // Onglet Appareils avec réglages icônes/texte
         { name: "devices", label: "Sélectionner les Appareils", selector: { entity: { multiple: true, domain: "sensor" } } },
-        { name: "title_size", label: "Taille du Titre (px)", selector: { number: { min: 10, max: 30, mode: "slider" } } },
-        { name: "badge_size", label: "Taille Consos/Autonomie (px)", selector: { number: { min: 8, max: 24, mode: "slider" } } },
         { name: "font_size", label: "Taille texte appareils (px)", selector: { number: { min: 8, max: 20, mode: "slider" } } },
         { name: "icon_size", label: "Taille icônes appareils (px)", selector: { number: { min: 15, max: 40, mode: "slider" } } }
       ]
     ];
     return html`
       <div class="tabs">
-        ${["Sources", "Batteries", "Réglages"].map((n, i) => html`
+        ${["Sources", "Batteries", "Appareils"].map((n, i) => html`
           <div class="tab ${this._tab === i ? 'active' : ''}" @click=${() => this._selectTab(i)}>${n}</div>
         `)}
       </div>
@@ -91,7 +91,6 @@ class EnergieCard extends LitElement {
       return false;
     });
 
-    // Récupération des tailles personnalisées
     const titleSize = c.title_size || 14;
     const badgeSize = c.badge_size || 9;
     const fontSize = c.font_size || 11;
@@ -153,9 +152,9 @@ class EnergieCard extends LitElement {
     ha-card { background: rgba(13, 13, 13, 0.95); backdrop-filter: blur(10px); border: 1px solid rgba(0, 249, 249, 0.3); border-radius: 20px; padding: 18px; color: #fff; }
     .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px; }
     .title { font-weight: 800; color: #00f9f9; letter-spacing: 1px; }
-    .header-badges { display: flex; gap: 8px; flex-wrap: wrap; }
-    .badge { padding: 4px 12px; border-radius: 20px; font-weight: bold; border: 1px solid rgba(255,255,255,0.1); white-space: nowrap; }
-    .badge.autarky { background: rgba(0, 249, 249, 0.1); color: #00f9f9; border-color: rgba(0, 249, 249, 0.4); box-shadow: 0 0 10px rgba(0,249,249,0.1); }
+    .header-badges { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .badge { padding: 5px 14px; border-radius: 20px; font-weight: bold; border: 1px solid rgba(255,255,255,0.1); white-space: nowrap; }
+    .badge.autarky { background: rgba(0, 249, 249, 0.1); color: #00f9f9; border-color: rgba(0, 249, 249, 0.4); }
     .badge.info { background: rgba(255, 255, 255, 0.05); color: #fff; }
     
     .progress-container { height: 6px; background: rgba(255,255,255,0.05); border-radius: 10px; margin-bottom: 22px; overflow: hidden; }
@@ -186,6 +185,6 @@ window.customCards = window.customCards || [];
 window.customCards.push({
   type: "energie-card",
   name: "energie-card",
-  description: "Dashboard réglable : titres, badges, icônes et couleurs dynamiques.",
+  description: "Dashboard Marstek & ZLinky réglable (Source, Batteries, Appareils).",
   preview: true
 });
