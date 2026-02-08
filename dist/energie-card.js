@@ -26,23 +26,23 @@ class EnergieCardEditor extends LitElement {
         { name: "title_size", label: "Taille du Titre (px)", selector: { number: { min: 10, max: 40, mode: "slider" } } },
         { name: "badge_size", label: "Taille Consos/Autonomie (px)", selector: { number: { min: 8, max: 30, mode: "slider" } } },
         { name: "solar", label: "Production Marstek (W)", selector: { entity: { domain: "sensor" } } },
-        { name: "solar_name", label: "Nom affiché Solaire", selector: { text: {} } },
+        { name: "solar_name", label: "Nom Solaire", selector: { text: {} } },
         { name: "linky", label: "ZLinky SINSTS (W)", selector: { entity: { domain: "sensor" } } },
-        { name: "linky_name", label: "Nom affiché Réseau", selector: { text: {} } }
+        { name: "linky_name", label: "Nom Réseau", selector: { text: {} } }
       ],
       [ 
         { name: "battery1", label: "Batterie 1 (%)", selector: { entity: { domain: "sensor" } } },
-        { name: "bat1_name", label: "Nom Batterie 1", selector: { text: {} } },
+        { name: "bat1_name", label: "Nom B1", selector: { text: {} } },
         { name: "battery2", label: "Batterie 2 (%)", selector: { entity: { domain: "sensor" } } },
-        { name: "bat2_name", label: "Nom Batterie 2", selector: { text: {} } },
+        { name: "bat2_name", label: "Nom B2", selector: { text: {} } },
         { name: "battery3", label: "Batterie 3 (%)", selector: { entity: { domain: "sensor" } } },
-        { name: "bat3_name", label: "Nom Batterie 3", selector: { text: {} } }
+        { name: "bat3_name", label: "Nom B3", selector: { text: {} } }
       ],
       [ 
-        { name: "devices", label: "Sélectionner les Appareils", selector: { entity: { multiple: true, domain: "sensor" } } },
-        { name: "custom_names", label: "Noms personnalisés (séparés par une virgule)", selector: { text: {} } },
-        { name: "font_size", label: "Taille texte appareils (px)", selector: { number: { min: 8, max: 20, mode: "slider" } } },
-        { name: "icon_size", label: "Taille icônes appareils (px)", selector: { number: { min: 15, max: 40, mode: "slider" } } }
+        { name: "devices", label: "Sélectionner les Appareils (max 60)", selector: { entity: { multiple: true, domain: "sensor" } } },
+        { name: "custom_names", label: "Noms des appareils (virgule ou ligne)", selector: { text: { multiline: true } } },
+        { name: "font_size", label: "Taille texte (px)", selector: { number: { min: 8, max: 20, mode: "slider" } } },
+        { name: "icon_size", label: "Taille icônes (px)", selector: { number: { min: 15, max: 40, mode: "slider" } } }
       ]
     ];
     return html`
@@ -86,17 +86,26 @@ class EnergieCard extends LitElement {
     const total_cons = solar + (grid > 0 ? grid : 0);
     const autarky = Math.min(Math.round((solar / total_cons) * 100), 100) || 0;
 
-    const customNames = c.custom_names ? c.custom_names.split(',').map(n => n.trim()) : [];
+    const customNamesArr = c.custom_names ? c.custom_names.split(/,|\n/).map(n => n.trim()) : [];
 
     let totalDevicesPower = 0;
+    // 1. On prépare tous les appareils avec leurs noms
     const allDevices = (c.devices || []).map((id, index) => {
       const s = this.hass.states[id];
       const val = s ? parseFloat(s.state) || 0 : 0;
       totalDevicesPower += val;
-      return { id, state: val, stateObj: s, customName: customNames[index] };
+      return { 
+        id, 
+        state: val, 
+        stateObj: s, 
+        name: customNamesArr[index] && customNamesArr[index] !== "" ? customNamesArr[index] : (s?.attributes.friendly_name || id.split('.')[1])
+      };
     });
 
-    const activeDevices = allDevices.filter(d => d.state > 5);
+    // 2. On filtre (>5W) ET on trie par puissance décroissante
+    const activeDevices = allDevices
+      .filter(d => d.state > 5)
+      .sort((a, b) => b.state - a.state);
 
     const titleSize = c.title_size || 14;
     const badgeSize = c.badge_size || 9;
@@ -138,7 +147,6 @@ class EnergieCard extends LitElement {
           ${activeDevices.map(d => {
             const pwr = Math.round(d.state);
             const color = this._getPowerColor(pwr);
-            const name = d.customName || d.stateObj?.attributes.friendly_name || d.id.split('.')[1];
             return html`
               <div class="device-item" style="border-color: ${color}44">
                 <ha-icon class="active-icon" 
@@ -147,7 +155,7 @@ class EnergieCard extends LitElement {
                 </ha-icon>
                 <div class="dev-info">
                    <span class="dev-val" style="font-size: ${fontSize}px; color: ${color}">${pwr}W</span>
-                   <span class="dev-name" style="font-size: ${fontSize - 3}px">${name}</span>
+                   <span class="dev-name" style="font-size: ${fontSize - 3}px">${d.name}</span>
                 </div>
               </div>
             `;
@@ -173,7 +181,7 @@ class EnergieCard extends LitElement {
     .label { font-size: 8px; opacity: 0.4; font-weight: bold; text-transform: uppercase; }
     .bat-mini { font-size: 7px; color: #00f9f9; opacity: 0.7; }
     .device-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(85px, 1fr)); gap: 8px; margin-top: 22px; }
-    .device-item { background: rgba(255,255,255,0.03); padding: 10px 5px; border-radius: 14px; border: 1px solid transparent; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+    .device-item { background: rgba(255,255,255,0.03); padding: 10px 5px; border-radius: 14px; border: 1px solid transparent; display: flex; flex-direction: column; align-items: center; gap: 4px; transition: all 0.3s ease; }
     .dev-info { display: flex; flex-direction: column; align-items: center; width: 100%; }
     .dev-val { font-weight: bold; }
     .dev-name { opacity: 0.6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 90%; text-align: center; }
@@ -189,7 +197,7 @@ customElements.define("energie-card", EnergieCard);
 window.customCards = window.customCards || [];
 window.customCards.push({
   type: "energie-card",
-  name: "energie-card",
-  description: "Dashboard Marstek & ZLinky avec renommage total de toutes les entités.",
+  name: "Energie Card Ultimate",
+  description: "Dashboard 60 appareils avec tri automatique par puissance.",
   preview: true
 });
