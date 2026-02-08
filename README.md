@@ -8,7 +8,7 @@
 **Energie Card Ultimate** est la carte Lovelace la plus avancée pour Home Assistant, conçue spécifiquement pour la gestion d'énergie complexe (Solaire, Réseau, Batteries). Elle transforme vos données brutes en une interface **Glassmorphism** futuriste et ultra-lisible.
 
 ### 📸 Aperçu du Dashboard
-![Aperçu de l'interface utilisateur](https://r.jina.ai/i/6f9035a901044390b14c33075c74238e)
+![Aperçu de l'interface utilisateur]![Aperçu](/local/elec.jpg)
 
 ---
 
