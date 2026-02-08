@@ -21,20 +21,21 @@ class EnergieCardEditor extends LitElement {
   render() {
     if (!this.hass || !this._config) return html``;
     const schemas = [
-      [ // Onglet Sources avec réglages titre/badges
+      [ 
         { name: "title", label: "Titre du Dashboard", selector: { text: {} } },
         { name: "title_size", label: "Taille du Titre (px)", selector: { number: { min: 10, max: 40, mode: "slider" } } },
         { name: "badge_size", label: "Taille Consos/Autonomie (px)", selector: { number: { min: 8, max: 30, mode: "slider" } } },
         { name: "solar", label: "Production Marstek (W)", selector: { entity: { domain: "sensor" } } },
         { name: "linky", label: "ZLinky SINSTS (W)", selector: { entity: { domain: "sensor" } } }
       ],
-      [ // Onglet Batteries
+      [ 
         { name: "battery1", label: "Batterie 1 (%)", selector: { entity: { domain: "sensor" } } },
         { name: "battery2", label: "Batterie 2 (%)", selector: { entity: { domain: "sensor" } } },
         { name: "battery3", label: "Batterie 3 (%)", selector: { entity: { domain: "sensor" } } }
       ],
-      [ // Onglet Appareils avec réglages icônes/texte
+      [ 
         { name: "devices", label: "Sélectionner les Appareils", selector: { entity: { multiple: true, domain: "sensor" } } },
+        { name: "custom_names", label: "Noms personnalisés (séparés par une virgule)", selector: { text: {} } },
         { name: "font_size", label: "Taille texte appareils (px)", selector: { number: { min: 8, max: 20, mode: "slider" } } },
         { name: "icon_size", label: "Taille icônes appareils (px)", selector: { number: { min: 15, max: 40, mode: "slider" } } }
       ]
@@ -80,16 +81,17 @@ class EnergieCard extends LitElement {
     const total_cons = solar + (grid > 0 ? grid : 0);
     const autarky = Math.min(Math.round((solar / total_cons) * 100), 100) || 0;
 
+    const customNames = c.custom_names ? c.custom_names.split(',').map(n => n.trim()) : [];
+
     let totalDevicesPower = 0;
-    const activeDevices = (c.devices || []).filter(id => {
+    const allDevices = (c.devices || []).map((id, index) => {
       const s = this.hass.states[id];
-      if (s) {
-        const val = parseFloat(s.state) || 0;
-        totalDevicesPower += val;
-        return val > 5;
-      }
-      return false;
+      const val = s ? parseFloat(s.state) || 0 : 0;
+      totalDevicesPower += val;
+      return { id, state: val, stateObj: s, customName: customNames[index] };
     });
+
+    const activeDevices = allDevices.filter(d => d.state > 5);
 
     const titleSize = c.title_size || 14;
     const badgeSize = c.badge_size || 9;
@@ -126,19 +128,19 @@ class EnergieCard extends LitElement {
         </div>
 
         <div class="device-list">
-          ${activeDevices.map(id => {
-            const s = this.hass.states[id];
-            const pwr = Math.round(parseFloat(s.state));
+          ${activeDevices.map(d => {
+            const pwr = Math.round(d.state);
             const color = this._getPowerColor(pwr);
+            const name = d.customName || d.stateObj?.attributes.friendly_name || d.id.split('.')[1];
             return html`
               <div class="device-item" style="border-color: ${color}44">
                 <ha-icon class="active-icon" 
-                         icon="${s.attributes.icon || 'mdi:flash'}" 
+                         icon="${d.stateObj?.attributes.icon || 'mdi:flash'}" 
                          style="--mdc-icon-size: ${iconSize}px; color: ${color}; filter: drop-shadow(0 0 3px ${color})">
                 </ha-icon>
                 <div class="dev-info">
                    <span class="dev-val" style="font-size: ${fontSize}px; color: ${color}">${pwr}W</span>
-                   <span class="dev-name" style="font-size: ${fontSize - 3}px">${s.attributes.friendly_name || id.split('.')[1]}</span>
+                   <span class="dev-name" style="font-size: ${fontSize - 3}px">${name}</span>
                 </div>
               </div>
             `;
@@ -156,22 +158,18 @@ class EnergieCard extends LitElement {
     .badge { padding: 5px 14px; border-radius: 20px; font-weight: bold; border: 1px solid rgba(255,255,255,0.1); white-space: nowrap; }
     .badge.autarky { background: rgba(0, 249, 249, 0.1); color: #00f9f9; border-color: rgba(0, 249, 249, 0.4); }
     .badge.info { background: rgba(255, 255, 255, 0.05); color: #fff; }
-    
     .progress-container { height: 6px; background: rgba(255,255,255,0.05); border-radius: 10px; margin-bottom: 22px; overflow: hidden; }
     .progress-bar { height: 100%; background: linear-gradient(90deg, #00f9f9, #008f8f); box-shadow: 0 0 10px #00f9f9; transition: width 1.5s ease-in-out; }
-    
     .main-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; text-align: center; }
     .stat-box { background: rgba(255,255,255,0.02); padding: 12px 5px; border-radius: 15px; border: 1px solid rgba(255,255,255,0.05); }
     .val { display: block; font-weight: bold; font-size: 16px; margin: 4px 0; }
     .label { font-size: 8px; opacity: 0.4; font-weight: bold; }
     .bat-mini { font-size: 7px; color: #00f9f9; opacity: 0.7; }
-    
     .device-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(85px, 1fr)); gap: 8px; margin-top: 22px; }
     .device-item { background: rgba(255,255,255,0.03); padding: 10px 5px; border-radius: 14px; border: 1px solid transparent; display: flex; flex-direction: column; align-items: center; gap: 4px; }
     .dev-info { display: flex; flex-direction: column; align-items: center; width: 100%; }
     .dev-val { font-weight: bold; }
     .dev-name { opacity: 0.6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 90%; text-align: center; }
-    
     .active-icon { animation: pulse 2.5s infinite ease-in-out; }
     @keyframes pulse { 0%, 100% { transform: scale(1); opacity: 0.7; } 50% { transform: scale(1.1); opacity: 1; } }
     ha-icon { color: #00f9f9; }
@@ -185,6 +183,6 @@ window.customCards = window.customCards || [];
 window.customCards.push({
   type: "energie-card",
   name: "energie-card",
-  description: "Dashboard Marstek & ZLinky réglable (Source, Batteries, Appareils).",
+  description: "Dashboard Marstek & ZLinky avec noms d'appareils personnalisables.",
   preview: true
 });
