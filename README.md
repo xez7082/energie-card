@@ -1,52 +1,36 @@
-# ⚡ Energie Card
+# ⚡ Energie Card Ultimate (Edition Marstek & ZLinky)
 
 [![HACS](https://img.shields.io/badge/HACS-Default-blue.svg)](https://github.com/hacs/integration)
-![Version](https://img.shields.io/github/v/release/xez7082/energie-card-ultimate?include_prereleases)
-[![License](https://img.shields.io/github/license/xez7082/energie-card-ultimate)](LICENSE)
+![Version](https://img.shields.io/github/v/release/xez7082/energie-card-ultimate?include_prereleases&label=version&color=orange)
+[![License](https://img.shields.io/github/license/xez7082/energie-card-ultimate?color=blue)](LICENSE)
 [![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-green.svg)](https://github.com/xez7082/energie-card-ultimate/graphs/commit-activity)
 
-**Energie Card Ultimate** est la carte Lovelace la plus avancée pour Home Assistant, conçue spécifiquement pour la gestion d'énergie complexe (Solaire, Réseau, Batteries). Elle transforme vos données brutes en une interface **Glassmorphism** futuriste et ultra-lisible.
+**Energie Card Ultimate** est une interface haut de gamme pour Home Assistant, optimisée pour le suivi Marstek et ZLinky. Elle gère jusqu'à 60 appareils avec un design **Glassmorphism** élégant.
 
 ### 📸 Aperçu du Dashboard
-![Aperçu de l'interface utilisateur]![Aperçu](/local/elec.png)
-![Aperçu de l'interface utilisateur](https://r.jina.ai/i/6f9035a901044390b14c33075c74238e)
+![Aperçu de l'interface utilisateur](/local/elec.png)
 
 ---
 
 ## ✨ Points Forts
-
-* **Tri Dynamique par Puissance :** Les appareils sont classés en temps réel. Le plus gros consommateur s'affiche toujours en haut à gauche.
-* **Filtrage Intelligent :** Seuls les appareils consommant **plus de 5W** sont affichés pour éviter l'encombrement.
-* **Affichage Grand Format :** Tuiles élargies à **120px** pour lire les noms longs sans coupure (ex: *Ordinateur Frédérick*).
-* **Renommage Multiligne :** Système robuste de correspondance par ligne dans l'éditeur.
-* **Monitoring Batteries :** Moyenne globale et détails individuels pour 3 batteries.
+* **Tri Dynamique :** Classement automatique des appareils par puissance (W).
+* **Filtrage Intelligent :** Masquage automatique des appareils consommant moins de 5W.
+* **Affichage XL :** Tuiles de 120px pour une lecture parfaite des noms longs.
+* **Aide Intégrée :** Fenêtre popup d'instructions accessible directement sur la carte.
 
 ---
 
-## 🚀 Installation
+## 🚀 Installation Rapide
 
-1.  **Fichier JavaScript :** Créez un fichier nommé `energie-card.js` dans votre dossier `/config/www/`.
-2.  **Ressource Home Assistant :** Allez dans **Paramètres > Tableaux de bord > Ressources** et ajoutez :
-    * **URL :** `/local/community/spa-card/spa-card.js`
-    * **Type :** `Module JavaScript`
-3.  **Ajout de la carte :** Recherchez **"Energie Card Ultimate"** dans votre sélecteur de cartes.
+1.  **Fichier :** Déposez `energie-card.js` dans votre dossier `/config/www/`.
+2.  **Ressource :** Ajoutez `/local/energie-card.js` dans les ressources de votre tableau de bord.
+3.  **Image :** Placez votre fichier `elec.png` dans le dossier `/config/www/`.
 
 ---
 
-## ⚙️ Configuration des Appareils (48+)
+## ⚖️ Licence & Release
+* Pour activer le badge **License** : Créez un fichier nommé `LICENSE` sur votre GitHub.
+* Pour activer le badge **Version** : Créez une "Release" (v1.0.0) sur GitHub.
 
-Dans l'onglet **Appareils** de l'éditeur, copiez-collez cette liste dans le champ **"Noms des appareils"** :
-
-```text
-Télévision salon
-barre-son
-Aspirateur
-Micro-onde
-Cave à vins
-Lave linge
-Delonghi
-IBC
-
-Scie sous-table
-Alexa spa
-Analyseur d'eau
+---
+*Développé par @xez7082 pour la communauté Home Assistant.*
