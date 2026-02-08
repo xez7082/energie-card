@@ -9,6 +9,7 @@
 
 ### 📸 Aperçu du Dashboard
 ![Aperçu de l'interface utilisateur](/local/elec.png)
+https://github.com/xez7082/energie-card/blob/main/elec.png
 
 ---
 
