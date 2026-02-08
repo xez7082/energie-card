@@ -1,8 +1,7 @@
 # ⚡ Energie Card
 
 [![HACS](https://img.shields.io/badge/HACS-Default-blue.svg)](https://github.com/hacs/integration)
-![Version](https://img.shields.io/github/v/release/xez7082/energie-card-ultimate?include_prereleases&label=version&color=orange)
-![Version](https://img.shields.io/github/v/release/xez7082/spa-card?include_prereleases)
+![Version](https://img.shields.io/github/v/release/xez7082/energie-card?include_prereleases)
 [![License](https://img.shields.io/github/license/xez7082/energie-card)](LICENSE)
 [![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-green.svg)](https://github.com/xez7082/energie-card/graphs/commit-activity)
 
