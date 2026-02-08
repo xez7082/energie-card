@@ -1,49 +1,42 @@
-⚡ Energie-Card : Lumina Interface
-Une carte Home Assistant ultra-moderne au style Glassmorphism (Lumina) conçue pour la gestion avancée de l'énergie.
+# ⚡ Energie-Card Lumina
 
-Cette carte n'est pas qu'un simple affichage : elle analyse en temps réel jusqu'à 60 appareils et ne montre que ceux qui consomment activement. Elle offre une visualisation fluide du mix énergétique entre votre compteur Linky, votre production solaire et vos batteries.
+[![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/integration)
+![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
 
-✨ Caractéristiques (Features)
-💎 Design Lumina (Glassmorphism) : Effets de flou d'arrière-plan (backdrop-filter), bordures translucides et ombres néon.
+Une interface **Glassmorphism Lumina** haute performance pour Home Assistant. Cette carte gère intelligemment votre mix énergétique (Solaire, Linky, Batteries) et filtre dynamiquement jusqu'à **60 appareils électriques**.
 
-🔋 Gestion Intelligente des Sources : Visualisation claire de la provenance du courant (Solaire, Réseau ou Batterie).
+---
 
-📉 Affichage Dynamique (Auto-Hide) : Gérez jusqu'à 60 appareils. La carte masque automatiquement les appareils éteints ou en veille pour ne garder que l'essentiel.
+## 💎 Aperçu du Design
+* **Interface Glassmorphism :** Effet de flou translucide (`backdrop-filter`) et bordures lumineuses.
+* **Gestion Dynamique :** Seuls les appareils consommant plus de 2W sont affichés. Les 60 autres restent masqués pour garder un tableau de bord épuré.
+* **Animations de Flux :** Lignes de courant animées (dashes/glow) indiquant la circulation de l'énergie.
+* **Barre d'Autonomie :** Calcul en temps réel de votre indépendance énergétique.
 
-🔄 Animations de Flux : Lignes de courant animées (style dashes et glow) indiquant la circulation de l'énergie vers les récepteurs.
+---
 
-📊 Barre d'Autonomie : Une barre de progression élégante calcule votre pourcentage d'autoconsommation en temps réel.
+## 🚀 Installation
 
-🚀 Ultra-Légère : Écrite en Vanilla JS pour des performances maximales, même sur tablette ou vieux smartphone.
+### 1. Via HACS (Recommandé)
+1. Dans Home Assistant, allez dans **HACS** > **Interface**.
+2. Cliquez sur les trois points en haut à droite > **Dépôts personnalisés**.
+3. Collez l'URL de ce dépôt GitHub.
+4. Sélectionnez la catégorie **Lovelace**.
+5. Cliquez sur **Installer**.
 
-🛠️ Installation
-Via HACS (Recommandé)
-Ouvrez HACS dans votre Home Assistant.
+### 2. Configuration Lovelace
+Ajoutez une carte "Manuel" et utilisez le schéma suivant :
 
-Cliquez sur Interface.
-
-Cliquez sur les trois points en haut à droite et choisissez Dépôts personnalisés.
-
-Collez l'URL de votre dépôt GitHub.
-
-Sélectionnez la catégorie Lovelace.
-
-Cliquez sur Ajouter, puis installez Energie Card Lumina.
-
-⚙️ Configuration
-Ajoutez une carte manuelle dans votre tableau de bord avec le code suivant :
-
-YAML
+```yaml
 type: custom:energie-card
-solar: sensor.solax_production_power  # Votre production solaire
-linky: sensor.linky_power             # Votre consommation réseau
-battery_power: sensor.battery_power   # Décharge batterie (W)
-battery_soc: sensor.battery_soc       # État de charge (%)
+solar: sensor.votre_production_solaire  # Watts
+linky: sensor.votre_conso_linky         # Watts
+battery_power: sensor.puissance_batterie # Watts (positif = décharge)
+battery_soc: sensor.etat_batterie_percent # %
 devices:
   - sensor.four_power
-  - sensor.lave_vaisselle_power
-  - sensor.clim_chambre_power
-  - sensor.pompe_piscine_power
-  # Vous pouvez lister ici jusqu'à 60 entités
-🎨 Design & Visuals
-Lumina Style Note : Pour un rendu optimal, utilisez un fond d'écran sombre (Dark Mode). Les effets de transparence et de flou ressortiront avec un aspect premium.
+  - sensor.lave_linge_power
+  - sensor.clim_salon_power
+  - sensor.ordinateur_bureau_power
+  - sensor.chauffe_eau_power
+  # ... vous pouvez lister jusqu'à 60 appareils ici
