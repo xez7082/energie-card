@@ -26,7 +26,7 @@
 
 1.  **Fichier JavaScript :** Créez un fichier nommé `energie-card.js` dans votre dossier `/config/www/`.
 2.  **Ressource Home Assistant :** Allez dans **Paramètres > Tableaux de bord > Ressources** et ajoutez :
-    * **URL :** `/local/energie-card.js`
+    * **URL :** `/local/community/spa-card/spa-card.js`
     * **Type :** `Module JavaScript`
 3.  **Ajout de la carte :** Recherchez **"Energie Card Ultimate"** dans votre sélecteur de cartes.
 
