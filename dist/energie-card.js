@@ -33,8 +33,10 @@ class EnergieCardEditor extends LitElement {
       ],
       [ 
         { name: "devices", label: "Sélectionner les Appareils", selector: { entity: { multiple: true, domain: "sensor" } } },
-        { name: "font_size", label: "Taille du texte (px)", selector: { number: { min: 8, max: 20, mode: "slider" } } },
-        { name: "icon_size", label: "Taille des icônes (px)", selector: { number: { min: 15, max: 40, mode: "slider" } } }
+        { name: "title_size", label: "Taille du Titre (px)", selector: { number: { min: 10, max: 30, mode: "slider" } } },
+        { name: "badge_size", label: "Taille Consos/Autonomie (px)", selector: { number: { min: 8, max: 24, mode: "slider" } } },
+        { name: "font_size", label: "Taille texte appareils (px)", selector: { number: { min: 8, max: 20, mode: "slider" } } },
+        { name: "icon_size", label: "Taille icônes appareils (px)", selector: { number: { min: 15, max: 40, mode: "slider" } } }
       ]
     ];
     return html`
@@ -58,12 +60,11 @@ class EnergieCard extends LitElement {
   static get properties() { return { hass: {}, config: {} }; }
   setConfig(config) { this.config = config; }
 
-  // Fonction pour déterminer la couleur selon la puissance
   _getPowerColor(watts) {
-    if (watts < 100) return "#00ff88"; // Vert (Éco)
-    if (watts < 1000) return "#00f9f9"; // Cyan (Normal)
-    if (watts < 2500) return "#ff9500"; // Orange (Fort)
-    return "#ff4d4d"; // Rouge (Très fort)
+    if (watts < 100) return "#00ff88"; 
+    if (watts < 1000) return "#00f9f9"; 
+    if (watts < 2500) return "#ff9500"; 
+    return "#ff4d4d"; 
   }
 
   render() {
@@ -90,16 +91,19 @@ class EnergieCard extends LitElement {
       return false;
     });
 
+    // Récupération des tailles personnalisées
+    const titleSize = c.title_size || 14;
+    const badgeSize = c.badge_size || 9;
     const fontSize = c.font_size || 11;
     const iconSize = c.icon_size || 20;
 
     return html`
       <ha-card>
         <div class="card-header">
-          <span class="title">${c.title || 'ENERGIE-CARD'}</span>
+          <span class="title" style="font-size: ${titleSize}px">${c.title || 'ENERGIE-CARD'}</span>
           <div class="header-badges">
-            <span class="badge info">CONSO: ${Math.round(totalDevicesPower)}W</span>
-            <span class="badge autarky">${autarky}% AUTONOME</span>
+            <span class="badge info" style="font-size: ${badgeSize}px">CONSO: ${Math.round(totalDevicesPower)}W</span>
+            <span class="badge autarky" style="font-size: ${badgeSize}px">${autarky}% AUTONOME</span>
           </div>
         </div>
         <div class="progress-container"><div class="progress-bar" style="width: ${autarky}%"></div></div>
@@ -147,32 +151,31 @@ class EnergieCard extends LitElement {
 
   static styles = css`
     ha-card { background: rgba(13, 13, 13, 0.95); backdrop-filter: blur(10px); border: 1px solid rgba(0, 249, 249, 0.3); border-radius: 20px; padding: 18px; color: #fff; }
-    .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
-    .title { font-weight: 800; color: #00f9f9; letter-spacing: 1px; font-size: 14px; }
-    .header-badges { display: flex; gap: 5px; }
-    .badge { font-size: 9px; padding: 2px 8px; border-radius: 12px; font-weight: bold; border: 1px solid rgba(255,255,255,0.1); }
-    .badge.autarky { background: rgba(0, 249, 249, 0.1); color: #00f9f9; border-color: rgba(0, 249, 249, 0.3); }
+    .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px; }
+    .title { font-weight: 800; color: #00f9f9; letter-spacing: 1px; }
+    .header-badges { display: flex; gap: 8px; flex-wrap: wrap; }
+    .badge { padding: 4px 12px; border-radius: 20px; font-weight: bold; border: 1px solid rgba(255,255,255,0.1); white-space: nowrap; }
+    .badge.autarky { background: rgba(0, 249, 249, 0.1); color: #00f9f9; border-color: rgba(0, 249, 249, 0.4); box-shadow: 0 0 10px rgba(0,249,249,0.1); }
     .badge.info { background: rgba(255, 255, 255, 0.05); color: #fff; }
     
-    .progress-container { height: 5px; background: rgba(255,255,255,0.05); border-radius: 10px; margin-bottom: 22px; overflow: hidden; }
+    .progress-container { height: 6px; background: rgba(255,255,255,0.05); border-radius: 10px; margin-bottom: 22px; overflow: hidden; }
     .progress-bar { height: 100%; background: linear-gradient(90deg, #00f9f9, #008f8f); box-shadow: 0 0 10px #00f9f9; transition: width 1.5s ease-in-out; }
     
     .main-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; text-align: center; }
     .stat-box { background: rgba(255,255,255,0.02); padding: 12px 5px; border-radius: 15px; border: 1px solid rgba(255,255,255,0.05); }
-    .val { display: block; font-weight: bold; font-size: 16px; margin: 4px 0; transition: color 0.5s; }
+    .val { display: block; font-weight: bold; font-size: 16px; margin: 4px 0; }
     .label { font-size: 8px; opacity: 0.4; font-weight: bold; }
     .bat-mini { font-size: 7px; color: #00f9f9; opacity: 0.7; }
     
     .device-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(85px, 1fr)); gap: 8px; margin-top: 22px; }
-    .device-item { background: rgba(255,255,255,0.03); padding: 10px 5px; border-radius: 14px; border: 1px solid transparent; display: flex; flex-direction: column; align-items: center; gap: 4px; transition: all 0.3s; }
+    .device-item { background: rgba(255,255,255,0.03); padding: 10px 5px; border-radius: 14px; border: 1px solid transparent; display: flex; flex-direction: column; align-items: center; gap: 4px; }
     .dev-info { display: flex; flex-direction: column; align-items: center; width: 100%; }
-    .dev-val { font-weight: bold; transition: color 0.5s; }
+    .dev-val { font-weight: bold; }
     .dev-name { opacity: 0.6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 90%; text-align: center; }
     
     .active-icon { animation: pulse 2.5s infinite ease-in-out; }
     @keyframes pulse { 0%, 100% { transform: scale(1); opacity: 0.7; } 50% { transform: scale(1.1); opacity: 1; } }
     ha-icon { color: #00f9f9; }
-    .solar ha-icon { color: #ffce70; }
   `;
 }
 
@@ -183,6 +186,6 @@ window.customCards = window.customCards || [];
 window.customCards.push({
   type: "energie-card",
   name: "energie-card",
-  description: "Dashboard Marstek dynamique avec couleurs selon puissance et réglage texte.",
+  description: "Dashboard réglable : titres, badges, icônes et couleurs dynamiques.",
   preview: true
 });
