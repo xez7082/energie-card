@@ -1,19 +1,24 @@
 # ⚡ Energie Card Ultimate (Edition Marstek & ZLinky)
 
-Cette carte personnalisée pour Home Assistant offre un suivi énergétique futuriste et ultra-lisible. Elle est spécifiquement optimisée pour gérer un grand nombre d'appareils (jusqu'à 60) avec un système de renommage intelligent et un tri dynamique.
+[![HACS](https://img.shields.io/badge/HACS-Default-blue.svg)](https://github.com/hacs/integration)
+![Version](https://img.shields.io/github/v/release/xez7082/energie-card-ultimate?include_prereleases)
+[![License](https://img.shields.io/github/license/xez7082/energie-card-ultimate)](LICENSE)
+[![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-green.svg)](https://github.com/xez7082/energie-card-ultimate/graphs/commit-activity)
+
+**Energie Card Ultimate** est la carte Lovelace la plus avancée pour Home Assistant, conçue spécifiquement pour la gestion d'énergie complexe (Solaire, Réseau, Batteries). Elle transforme vos données brutes en une interface **Glassmorphism** futuriste et ultra-lisible.
 
 ### 📸 Aperçu du Dashboard
 ![Aperçu de l'interface utilisateur](https://r.jina.ai/i/6f9035a901044390b14c33075c74238e)
 
 ---
 
-## ✨ Fonctionnalités Principales
+## ✨ Points Forts
 
-* **Tri Automatique par Puissance :** Les appareils sont classés en temps réel. Le plus gros consommateur s'affiche toujours en haut à gauche pour une visibilité immédiate.
-* **Filtrage Intelligent :** Seuls les appareils consommant **plus de 5W** sont affichés afin de garder un tableau de bord propre et utile.
-* **Gestion des Noms Longs :** Les tuiles d'appareils sont élargies à **120px** (au lieu de 85px) pour permettre l'affichage complet de noms comme *"Ordinateur Frédérick"* ou *"Télévision Ch. parents"*.
-* **Renommage Simplifié :** Système de correspondance par ligne dans l'éditeur. Si vous laissez une ligne vide, la carte utilise automatiquement le nom d'origine de Home Assistant.
-* **Multi-Batteries :** Affiche la moyenne globale de 3 batteries avec le détail individuel juste en dessous.
+* **Tri Dynamique par Puissance :** Les appareils sont classés en temps réel. Le plus gros consommateur s'affiche toujours en haut à gauche.
+* **Filtrage Intelligent :** Seuls les appareils consommant **plus de 5W** sont affichés pour éviter l'encombrement.
+* **Affichage Grand Format :** Tuiles élargies à **120px** pour lire les noms longs sans coupure (ex: *Ordinateur Frédérick*).
+* **Renommage Multiligne :** Système robuste de correspondance par ligne dans l'éditeur.
+* **Monitoring Batteries :** Moyenne globale et détails individuels pour 3 batteries.
 
 ---
 
@@ -23,13 +28,13 @@ Cette carte personnalisée pour Home Assistant offre un suivi énergétique futu
 2.  **Ressource Home Assistant :** Allez dans **Paramètres > Tableaux de bord > Ressources** et ajoutez :
     * **URL :** `/local/energie-card.js`
     * **Type :** `Module JavaScript`
-3.  **Ajout de la carte :** Sur votre tableau de bord, ajoutez une carte personnalisée et recherchez **"Energie Card Ultimate"**.
+3.  **Ajout de la carte :** Recherchez **"Energie Card Ultimate"** dans votre sélecteur de cartes.
 
 ---
 
-## ⚙️ Configuration de vos Appareils
+## ⚙️ Configuration des Appareils (48+)
 
-Dans l'onglet **Appareils** de l'éditeur de carte, copiez et collez la liste suivante dans le champ **"Noms des appareils"** (un nom par ligne) :
+Dans l'onglet **Appareils** de l'éditeur, copiez-collez cette liste dans le champ **"Noms des appareils"** :
 
 ```text
 Télévision salon
@@ -40,9 +45,6 @@ Cave à vins
 Lave linge
 Delonghi
 IBC
-Carsport
-Congélateur
-Kenwood
 
 Scie sous-table
 Alexa spa
