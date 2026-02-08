@@ -40,7 +40,7 @@ class EnergieCardEditor extends LitElement {
       ],
       [ 
         { name: "devices", label: "Sélectionner les Appareils (max 60)", selector: { entity: { multiple: true, domain: "sensor" } } },
-        { name: "custom_names", label: "Noms des appareils (virgule ou ligne)", selector: { text: { multiline: true } } },
+        { name: "custom_names", label: "Noms des appareils (Un par ligne)", selector: { text: { multiline: true } } },
         { name: "font_size", label: "Taille texte (px)", selector: { number: { min: 8, max: 20, mode: "slider" } } },
         { name: "icon_size", label: "Taille icônes (px)", selector: { number: { min: 15, max: 40, mode: "slider" } } }
       ]
@@ -89,7 +89,6 @@ class EnergieCard extends LitElement {
     const customNamesArr = c.custom_names ? c.custom_names.split(/,|\n/).map(n => n.trim()) : [];
 
     let totalDevicesPower = 0;
-    // 1. On prépare tous les appareils avec leurs noms
     const allDevices = (c.devices || []).map((id, index) => {
       const s = this.hass.states[id];
       const val = s ? parseFloat(s.state) || 0 : 0;
@@ -102,7 +101,6 @@ class EnergieCard extends LitElement {
       };
     });
 
-    // 2. On filtre (>5W) ET on trie par puissance décroissante
     const activeDevices = allDevices
       .filter(d => d.state > 5)
       .sort((a, b) => b.state - a.state);
@@ -155,7 +153,7 @@ class EnergieCard extends LitElement {
                 </ha-icon>
                 <div class="dev-info">
                    <span class="dev-val" style="font-size: ${fontSize}px; color: ${color}">${pwr}W</span>
-                   <span class="dev-name" style="font-size: ${fontSize - 3}px">${d.name}</span>
+                   <span class="dev-name" style="font-size: ${fontSize - 1}px">${d.name}</span>
                 </div>
               </div>
             `;
@@ -180,11 +178,38 @@ class EnergieCard extends LitElement {
     .val { display: block; font-weight: bold; font-size: 16px; margin: 4px 0; }
     .label { font-size: 8px; opacity: 0.4; font-weight: bold; text-transform: uppercase; }
     .bat-mini { font-size: 7px; color: #00f9f9; opacity: 0.7; }
-    .device-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(85px, 1fr)); gap: 8px; margin-top: 22px; }
-    .device-item { background: rgba(255,255,255,0.03); padding: 10px 5px; border-radius: 14px; border: 1px solid transparent; display: flex; flex-direction: column; align-items: center; gap: 4px; transition: all 0.3s ease; }
-    .dev-info { display: flex; flex-direction: column; align-items: center; width: 100%; }
+    
+    /* --- MODIFICATION ICI : GRILLE ÉLARGIE --- */
+    .device-list { 
+      display: grid; 
+      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); 
+      gap: 12px; 
+      margin-top: 22px; 
+    }
+    .device-item { 
+      background: rgba(255,255,255,0.03); 
+      padding: 12px 8px; 
+      border-radius: 14px; 
+      border: 1px solid transparent; 
+      display: flex; 
+      flex-direction: column; 
+      align-items: center; 
+      gap: 6px; 
+      transition: all 0.3s ease;
+      min-height: 80px;
+      justify-content: center;
+    }
+    /* ---------------------------------------- */
+
+    .dev-info { display: flex; flex-direction: column; align-items: center; width: 100%; text-align: center; }
     .dev-val { font-weight: bold; }
-    .dev-name { opacity: 0.6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 90%; text-align: center; }
+    .dev-name { 
+      opacity: 0.8; 
+      line-height: 1.1;
+      word-break: break-word; /* Permet de couper les mots si trop long */
+      display: block;
+      margin-top: 2px;
+    }
     .active-icon { animation: pulse 2.5s infinite ease-in-out; }
     @keyframes pulse { 0%, 100% { transform: scale(1); opacity: 0.7; } 50% { transform: scale(1.1); opacity: 1; } }
     ha-icon { color: #00f9f9; }
@@ -198,6 +223,6 @@ window.customCards = window.customCards || [];
 window.customCards.push({
   type: "energie-card",
   name: "Energie Card Ultimate",
-  description: "Dashboard 60 appareils avec tri automatique par puissance.",
+  description: "Dashboard 60 appareils avec cartes larges et tri par puissance.",
   preview: true
 });
