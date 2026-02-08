@@ -8,8 +8,8 @@
 **Energie Card Ultimate** est une interface haut de gamme pour Home Assistant, optimisée pour le suivi Marstek et ZLinky. Elle gère jusqu'à 60 appareils avec un design **Glassmorphism** élégant.
 
 ### 📸 Aperçu du Dashboard
-![Aperçu de l'interface utilisateur](/local/elec.png)
-https://github.com/xez7082/energie-card/blob/main/elec.png
+![Spa Preview](https://github.com/xez7082/energie-card/blob/main/elec.png)
+
 
 ---
 
