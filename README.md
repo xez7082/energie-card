@@ -1,48 +1,75 @@
-# ⚡ Energie-Card Lumina
+# ⚡ Energie Card (Marstek & ZLinky Edition)
 
-[![HACS](https://img.shields.io/badge/HACS-Default-blue.svg)](https://github.com/hacs/integration)
-![Version](https://img.shields.io/github/v/release/xez7082/energie-card?include_prereleases)
-[![License](https://img.shields.io/github/license/xez7082/energie-card)](LICENSE)
-[![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-green.svg)](https://github.com/xez7082/energie-card/graphs/commit-activity)
+Une carte Home Assistant (Lovelace) ultra-complète et dynamique pour suivre votre production solaire **Marstek**, votre consommation réseau via **ZLinky (TIC)** et vos appareils individuels.
 
-**Energie-Card Lumina** est une interface haut de gamme pour Home Assistant. Elle centralise la gestion de votre énergie (Linky, Solaire, 3 Batteries) avec un design **Glassmorphism** épuré et des animations dynamiques.
+
+
+## ✨ Fonctionnalités
+* **Optimisé ZLinky** : Conçu spécifiquement pour le mode Standard (`SINSTS`).
+* **Gestion Triple Batterie** : Calcul automatique de la moyenne et affichage du détail des 3 blocs.
+* **Badges Dynamiques** : Affichage en haut de la **Consommation Totale des appareils** et du **Taux d'autonomie**.
+* **Appareils Intelligents** : Seuls les appareils consommant plus de 5W s'affichent pour éviter l'encombrement.
+* **Noms Personnalisés** : Renommez vos entités directement depuis l'interface (ex: `sensor.piscine_power_2` -> `Piscine`).
+* **Couleurs Dynamiques** : L'interface réagit à la puissance (Vert, Cyan, Orange, Rouge).
+* **Réglages Visuels** : 4 curseurs pour régler la taille du titre, des badges, des icônes et du texte.
+
+## 🛠️ Installation
+
+1. Copiez le code JavaScript dans un fichier nommé `energie-card.js` dans votre dossier `www/` (ou `www/community/`).
+2. Ajoutez la ressource dans Home Assistant :
+   * **Paramètres** > **Tableaux de bord** > **Ressources**.
+   * Cliquez sur **Ajouter une ressource**.
+   * Saisissez l'URL : `/local/energie-card.js` (ou votre chemin personnalisé).
+   * Type de ressource : **Module JavaScript**.
+3. Ajoutez une carte manuelle à votre tableau de bord et tapez `type: custom:energie-card`.
 
 ---
 
-## 💎 Pourquoi ce "Hack" ?
+## ⚙️ Configuration de l'éditeur
 
-La plupart des cartes d'énergie deviennent illisibles dès que l'on a beaucoup d'appareils. **Energie-Card Lumina** résout ce problème en gérant jusqu'à **60 appareils** tout en restant ultra-propre.
+### 1. Onglet "Sources"
+| Paramètre | Description |
+|-----------|-------------|
+| **Titre** | Nom affiché en haut à gauche. |
+| **Taille Titre** | Curseur pour agrandir le titre principal. |
+| **Taille Badges** | Curseur pour agrandir la Conso Totale et l'Autonomie. |
+| **Production Marstek** | Entité sensor de puissance PV (W). |
+| **ZLinky SINSTS** | Entité `SINSTS` de votre module ZLinky. |
 
-* **Filtrage Intelligent (Auto-Hide) :** Seuls les appareils qui consomment réellement (> 2W) s'affichent. Si votre four est éteint, il disparaît pour libérer de l'espace.
-* **Interface Glassmorphism :** Effet de verre dépoli, flou d'arrière-plan (`backdrop-filter`) et lueurs néon.
-* **Flux Animés (Shimmer & Dashes) :** Des points et tirets animés indiquent la circulation de l'énergie.
-* **Mix Énergétique :** Visualisation claire des sources (Linky, Solaire ou Batteries).
-* **Barre d'Autonomie :** Une barre de progression Lumina indique votre pourcentage d'indépendance énergétique en temps réel.
+### 2. Onglet "Batteries"
+Associez ici vos entités de pourcentage de charge (`SOC`) pour vos 3 batteries. La carte calcule automatiquement la moyenne globale.
+
+### 3. Onglet "Appareils"
+* **Sélectionner les Appareils** : Ajoutez vos prises connectées ou modules de mesure.
+* **Noms personnalisés** : Liste des noms simplifiés séparés par des virgules (ex: `Frigo, Clim, TV`). **Important :** L'ordre doit correspondre à la liste des appareils sélectionnés.
+* **Tailles** : Réglez finement la taille des icônes et des polices pour s'adapter aux écrans (Tablette, Mobile, PC).
 
 ---
 
-## 🚀 Installation
+## 🎨 Logique des Couleurs
+La carte change de couleur selon la puissance détectée :
+* 🟢 **< 100W** : Éco / Veille.
+* 🔵 **100W - 1000W** : Consommation modérée.
+* 🟠 **1000W - 2500W** : Consommation élevée (Gros électroménager).
+* 🔴 **> 2500W** : Charge critique sur le réseau.
 
-### 1. Via HACS (Recommandé)
-1. Dans Home Assistant, allez dans **HACS** > **Interface**.
-2. Cliquez sur les trois points en haut à droite > **Dépôts personnalisés**.
-3. Collez l'URL de votre dépôt : `https://github.com/xez7082/energie-card`.
-4. Sélectionnez la catégorie **Lovelace**.
-5. Cliquez sur **Ajouter**, puis sur **Installer**.
+---
 
-### 2. Configuration Lovelace
-Ajoutez une carte **Manuel** dans votre tableau de bord et utilisez le code suivant :
-
+## 📄 Exemple de configuration YAML
 ```yaml
 type: custom:energie-card
-solar: sensor.production_solaire      # Watts
-linky: sensor.consommation_grid       # Watts
-battery_power: sensor.batterie_watts  # Watts (positif = décharge)
-battery_soc: sensor.batterie_pourcent # %
+title: "MON DASHBOARD ÉNERGIE"
+title_size: 18
+badge_size: 11
+solar: sensor.marstek_pv_power
+linky: sensor.zlinky_tic_sinsts
+battery1: sensor.marstek_bat1_soc
+battery2: sensor.marstek_bat2_soc
+battery3: sensor.marstek_bat3_soc
 devices:
-  - sensor.four_power
-  - sensor.machine_a_laver_power
+  - sensor.prise_frigo_power
   - sensor.clim_salon_power
-  - sensor.ordinateur_power
-  - sensor.frigo_power
-  # ... listez ici vos 60 appareils
+  - sensor.four_cuisine_power
+custom_names: "Frigo, Salon, Four"
+font_size: 12
+icon_size: 25
