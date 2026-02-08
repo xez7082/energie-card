@@ -123,10 +123,11 @@ class EnergieCard extends LitElement {
           <div class="help-overlay" @click=${this._toggleHelp}>
             <div class="help-content">
                <h3>⚡ Aide Energie Card</h3>
+               <img src="/local/elec.png" style="width:100%; border-radius:10px; margin-bottom:10px; border:1px solid #00f9f9;">
+               
                <p><b>Tri :</b> Automatique par puissance décroissante.</p>
                <p><b>Seuil :</b> Les appareils < 5W sont masqués.</p>
                <p><b>Configuration :</b> Les noms se règlent par ligne dans l'éditeur.</p>
-               <p><b>Couleurs :</b> Vert (<100W), Cyan (<1kW), Orange (<2.5kW), Rouge (>2.5kW).</p>
                <button class="close-btn">FERMER</button>
             </div>
           </div>
