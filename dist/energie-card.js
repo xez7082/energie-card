@@ -1,23 +1,23 @@
-const lit = window.LitElement || Object.getPrototypeOf(customElements.get("ha-panel-lovelace"));
-const { html, css } = lit;
+import {
+  LitElement,
+  html,
+  css
+} from "https://unpkg.com/lit-element@2.4.0/lit-element.js?module";
 
-class EnergieCardEditor extends lit {
+class EnergieCardEditor extends LitElement {
   static get properties() { return { hass: {}, _config: {}, _tab: { type: Number } }; }
   constructor() { super(); this._tab = 0; }
   setConfig(config) { this._config = config; }
   _selectTab(idx) { this._tab = idx; }
-  
   _valueChanged(ev) {
     if (!this._config || !this.hass) return;
-    const config = { ...this._config, ...ev.detail.value };
     const event = new CustomEvent("config-changed", {
-      detail: { config: config },
+      detail: { config: ev.detail.value },
       bubbles: true,
       composed: true,
     });
     this.dispatchEvent(event);
   }
-
   render() {
     if (!this.hass || !this._config) return html``;
     const schemas = [
@@ -25,27 +25,26 @@ class EnergieCardEditor extends lit {
         { name: "title", label: "Titre du Dashboard", selector: { text: {} } },
         { name: "title_size", label: "Taille du Titre (px)", selector: { number: { min: 10, max: 40, mode: "slider" } } },
         { name: "badge_size", label: "Taille Consos/Autonomie (px)", selector: { number: { min: 8, max: 30, mode: "slider" } } },
-        { name: "solar", label: "Entité Solaire", selector: { entity: { domain: "sensor" } } },
+        { name: "solar", label: "Production Marstek (W)", selector: { entity: { domain: "sensor" } } },
         { name: "solar_name", label: "Nom affiché Solaire", selector: { text: {} } },
-        { name: "linky", label: "Entité Réseau (ZLinky)", selector: { entity: { domain: "sensor" } } },
+        { name: "linky", label: "ZLinky SINSTS (W)", selector: { entity: { domain: "sensor" } } },
         { name: "linky_name", label: "Nom affiché Réseau", selector: { text: {} } }
       ],
       [ 
-        { name: "battery1", label: "Entité Batterie 1", selector: { entity: { domain: "sensor" } } },
+        { name: "battery1", label: "Batterie 1 (%)", selector: { entity: { domain: "sensor" } } },
         { name: "bat1_name", label: "Nom Batterie 1", selector: { text: {} } },
-        { name: "battery2", label: "Entité Batterie 2", selector: { entity: { domain: "sensor" } } },
+        { name: "battery2", label: "Batterie 2 (%)", selector: { entity: { domain: "sensor" } } },
         { name: "bat2_name", label: "Nom Batterie 2", selector: { text: {} } },
-        { name: "battery3", label: "Entité Batterie 3", selector: { entity: { domain: "sensor" } } },
+        { name: "battery3", label: "Batterie 3 (%)", selector: { entity: { domain: "sensor" } } },
         { name: "bat3_name", label: "Nom Batterie 3", selector: { text: {} } }
       ],
       [ 
         { name: "devices", label: "Sélectionner les Appareils", selector: { entity: { multiple: true, domain: "sensor" } } },
-        { name: "custom_names", label: "Noms personnalisés (virgules)", selector: { text: {} } },
+        { name: "custom_names", label: "Noms personnalisés (séparés par une virgule)", selector: { text: {} } },
         { name: "font_size", label: "Taille texte appareils (px)", selector: { number: { min: 8, max: 20, mode: "slider" } } },
-        { name: "icon_size", label: "Taille icônes (px)", selector: { number: { min: 15, max: 40, mode: "slider" } } }
+        { name: "icon_size", label: "Taille icônes appareils (px)", selector: { number: { min: 15, max: 40, mode: "slider" } } }
       ]
     ];
-
     return html`
       <div class="tabs">
         ${["Sources", "Batteries", "Appareils"].map((n, i) => html`
@@ -53,16 +52,16 @@ class EnergieCardEditor extends lit {
         `)}
       </div>
       <ha-form .hass=${this.hass} .data=${this._config} .schema=${schemas[this._tab]} @value-changed=${this._valueChanged}></ha-form>
-      <style>
-        .tabs { display: flex; gap: 8px; margin-bottom: 20px; }
-        .tab { padding: 8px 12px; background: var(--secondary-background-color); color: var(--secondary-text-color); border-radius: 8px; cursor: pointer; flex: 1; text-align: center; border: 1px solid var(--divider-color); }
-        .tab.active { background: #00f9f9; color: #000; font-weight: bold; }
-      </style>
     `;
   }
+  static styles = css`
+    .tabs { display: flex; gap: 8px; margin-bottom: 20px; }
+    .tab { padding: 8px 12px; background: #2c2c2c; color: #aaa; border-radius: 8px; cursor: pointer; font-size: 12px; border: 1px solid #444; flex: 1; text-align: center; }
+    .tab.active { background: #00f9f9; color: #000; font-weight: bold; border-color: #00f9f9; }
+  `;
 }
 
-class EnergieCard extends lit {
+class EnergieCard extends LitElement {
   static getConfigElement() { return document.createElement("energie-card-editor"); }
   static get properties() { return { hass: {}, config: {} }; }
   setConfig(config) { this.config = config; }
@@ -88,13 +87,16 @@ class EnergieCard extends lit {
     const autarky = Math.min(Math.round((solar / total_cons) * 100), 100) || 0;
 
     const customNames = c.custom_names ? c.custom_names.split(',').map(n => n.trim()) : [];
+
     let totalDevicesPower = 0;
-    const activeDevices = (c.devices || []).map((id, idx) => {
+    const allDevices = (c.devices || []).map((id, index) => {
       const s = this.hass.states[id];
       const val = s ? parseFloat(s.state) || 0 : 0;
       totalDevicesPower += val;
-      return { id, val, s, name: customNames[idx] || s?.attributes.friendly_name || id.split('.')[1] };
-    }).filter(d => d.val > 5);
+      return { id, state: val, stateObj: s, customName: customNames[index] };
+    });
+
+    const activeDevices = allDevices.filter(d => d.state > 5);
 
     const titleSize = c.title_size || 14;
     const badgeSize = c.badge_size || 9;
@@ -122,7 +124,7 @@ class EnergieCard extends lit {
             <ha-icon icon="mdi:battery-high"></ha-icon>
             <span class="val">${avg_bat}%</span>
             <div class="bat-mini">
-              ${c.bat1_name || 'B1'}:${b1}%|${c.bat2_name || 'B2'}:${b2}%|${c.bat3_name || 'B3'}:${b3}%
+               ${c.bat1_name || 'B1'}:${b1}%|${c.bat2_name || 'B2'}:${b2}%|${c.bat3_name || 'B3'}:${b3}%
             </div>
           </div>
           <div class="stat-box grid">
@@ -134,14 +136,18 @@ class EnergieCard extends lit {
 
         <div class="device-list">
           ${activeDevices.map(d => {
-            const pwr = Math.round(d.val);
+            const pwr = Math.round(d.state);
             const color = this._getPowerColor(pwr);
+            const name = d.customName || d.stateObj?.attributes.friendly_name || d.id.split('.')[1];
             return html`
               <div class="device-item" style="border-color: ${color}44">
-                <ha-icon class="active-icon" icon="${d.s?.attributes.icon || 'mdi:flash'}" style="--mdc-icon-size: ${iconSize}px; color: ${color}; filter: drop-shadow(0 0 3px ${color})"></ha-icon>
+                <ha-icon class="active-icon" 
+                         icon="${d.stateObj?.attributes.icon || 'mdi:flash'}" 
+                         style="--mdc-icon-size: ${iconSize}px; color: ${color}; filter: drop-shadow(0 0 3px ${color})">
+                </ha-icon>
                 <div class="dev-info">
                    <span class="dev-val" style="font-size: ${fontSize}px; color: ${color}">${pwr}W</span>
-                   <span class="dev-name" style="font-size: ${fontSize - 3}px">${d.name}</span>
+                   <span class="dev-name" style="font-size: ${fontSize - 3}px">${name}</span>
                 </div>
               </div>
             `;
@@ -151,32 +157,30 @@ class EnergieCard extends lit {
     `;
   }
 
-  static get styles() {
-    return css`
-      ha-card { background: rgba(13, 13, 13, 0.95); backdrop-filter: blur(10px); border: 1px solid rgba(0, 249, 249, 0.3); border-radius: 20px; padding: 18px; color: #fff; }
-      .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px; }
-      .title { font-weight: 800; color: #00f9f9; letter-spacing: 1px; }
-      .header-badges { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-      .badge { padding: 5px 14px; border-radius: 20px; font-weight: bold; border: 1px solid rgba(255,255,255,0.1); white-space: nowrap; }
-      .badge.autarky { background: rgba(0, 249, 249, 0.1); color: #00f9f9; border-color: rgba(0, 249, 249, 0.4); }
-      .badge.info { background: rgba(255, 255, 255, 0.05); color: #fff; }
-      .progress-container { height: 6px; background: rgba(255,255,255,0.05); border-radius: 10px; margin-bottom: 22px; overflow: hidden; }
-      .progress-bar { height: 100%; background: linear-gradient(90deg, #00f9f9, #008f8f); box-shadow: 0 0 10px #00f9f9; transition: width 1.5s ease-in-out; }
-      .main-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; text-align: center; }
-      .stat-box { background: rgba(255,255,255,0.02); padding: 12px 5px; border-radius: 15px; border: 1px solid rgba(255,255,255,0.05); }
-      .val { display: block; font-weight: bold; font-size: 16px; margin: 4px 0; }
-      .label { font-size: 8px; opacity: 0.4; font-weight: bold; text-transform: uppercase; }
-      .bat-mini { font-size: 7px; color: #00f9f9; opacity: 0.7; }
-      .device-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(85px, 1fr)); gap: 8px; margin-top: 22px; }
-      .device-item { background: rgba(255,255,255,0.03); padding: 10px 5px; border-radius: 14px; border: 1px solid transparent; display: flex; flex-direction: column; align-items: center; gap: 4px; }
-      .dev-info { display: flex; flex-direction: column; align-items: center; width: 100%; }
-      .dev-val { font-weight: bold; }
-      .dev-name { opacity: 0.6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 90%; text-align: center; }
-      .active-icon { animation: pulse 2.5s infinite ease-in-out; }
-      @keyframes pulse { 0%, 100% { transform: scale(1); opacity: 0.7; } 50% { transform: scale(1.1); opacity: 1; } }
-      ha-icon { color: #00f9f9; }
-    `;
-  }
+  static styles = css`
+    ha-card { background: rgba(13, 13, 13, 0.95); backdrop-filter: blur(10px); border: 1px solid rgba(0, 249, 249, 0.3); border-radius: 20px; padding: 18px; color: #fff; }
+    .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px; }
+    .title { font-weight: 800; color: #00f9f9; letter-spacing: 1px; }
+    .header-badges { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .badge { padding: 5px 14px; border-radius: 20px; font-weight: bold; border: 1px solid rgba(255,255,255,0.1); white-space: nowrap; }
+    .badge.autarky { background: rgba(0, 249, 249, 0.1); color: #00f9f9; border-color: rgba(0, 249, 249, 0.4); }
+    .badge.info { background: rgba(255, 255, 255, 0.05); color: #fff; }
+    .progress-container { height: 6px; background: rgba(255,255,255,0.05); border-radius: 10px; margin-bottom: 22px; overflow: hidden; }
+    .progress-bar { height: 100%; background: linear-gradient(90deg, #00f9f9, #008f8f); box-shadow: 0 0 10px #00f9f9; transition: width 1.5s ease-in-out; }
+    .main-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; text-align: center; }
+    .stat-box { background: rgba(255,255,255,0.02); padding: 12px 5px; border-radius: 15px; border: 1px solid rgba(255,255,255,0.05); }
+    .val { display: block; font-weight: bold; font-size: 16px; margin: 4px 0; }
+    .label { font-size: 8px; opacity: 0.4; font-weight: bold; text-transform: uppercase; }
+    .bat-mini { font-size: 7px; color: #00f9f9; opacity: 0.7; }
+    .device-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(85px, 1fr)); gap: 8px; margin-top: 22px; }
+    .device-item { background: rgba(255,255,255,0.03); padding: 10px 5px; border-radius: 14px; border: 1px solid transparent; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+    .dev-info { display: flex; flex-direction: column; align-items: center; width: 100%; }
+    .dev-val { font-weight: bold; }
+    .dev-name { opacity: 0.6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 90%; text-align: center; }
+    .active-icon { animation: pulse 2.5s infinite ease-in-out; }
+    @keyframes pulse { 0%, 100% { transform: scale(1); opacity: 0.7; } 50% { transform: scale(1.1); opacity: 1; } }
+    ha-icon { color: #00f9f9; }
+  `;
 }
 
 customElements.define("energie-card-editor", EnergieCardEditor);
@@ -185,7 +189,7 @@ customElements.define("energie-card", EnergieCard);
 window.customCards = window.customCards || [];
 window.customCards.push({
   type: "energie-card",
-  name: "Energie Card Pro",
-  description: "Marstek & ZLinky avec renommage total.",
+  name: "energie-card",
+  description: "Dashboard Marstek & ZLinky avec renommage total de toutes les entités.",
   preview: true
 });
