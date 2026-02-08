@@ -2,7 +2,7 @@
 
 [![HACS](https://img.shields.io/badge/HACS-Default-blue.svg)](https://github.com/hacs/integration)
 ![Version](https://img.shields.io/github/v/release/xez7082/energie-card-ultimate?include_prereleases&label=version&color=orange)
-[![License](https://img.shields.io/github/license/xez7082/energie-card-ultimate?color=blue)](LICENSE)
+[![License](https://img.shields.io/github/license/xez7082/spa-card)](LICENSE)
 [![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-green.svg)](https://github.com/xez7082/energie-card-ultimate/graphs/commit-activity)
 
 **Energie Card Ultimate** est une interface haut de gamme pour Home Assistant, optimisée pour le suivi Marstek et ZLinky. Elle gère jusqu'à 60 appareils avec un design **Glassmorphism** élégant.
