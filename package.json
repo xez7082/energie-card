@@ -1,0 +1,24 @@
+{
+  "name": "energie-card",
+  "version": "1.0.0",
+  "description": "Interface Lumina Glassmorphism pour la gestion d'énergie Home Assistant",
+  "main": "dist/energie-card.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/xez7082/energie-card.git"
+  },
+  "keywords": [
+    "home-assistant",
+    "lovelace",
+    "custom-card",
+    "energy",
+    "lumina",
+    "glassmorphism"
+  ],
+  "author": "Ton Nom",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/xez7082/energie-card/issues"
+  },
+  "homepage": "https://github.com/xez7082/energie-card#readme"
+}
