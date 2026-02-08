@@ -63,8 +63,18 @@ class EnergieCardEditor extends LitElement {
 
 class EnergieCard extends LitElement {
   static getConfigElement() { return document.createElement("energie-card-editor"); }
-  static get properties() { return { hass: {}, config: {} }; }
+  static get properties() { return { hass: {}, config: {}, _showHelp: { type: Boolean } }; }
+  
+  constructor() {
+    super();
+    this._showHelp = false;
+  }
+
   setConfig(config) { this.config = config; }
+
+  _toggleHelp() {
+    this._showHelp = !this._showHelp;
+  }
 
   _getPowerColor(watts) {
     if (watts < 100) return "#00ff88"; 
@@ -105,18 +115,28 @@ class EnergieCard extends LitElement {
       .filter(d => d.state > 5)
       .sort((a, b) => b.state - a.state);
 
-    const titleSize = c.title_size || 14;
-    const badgeSize = c.badge_size || 9;
-    const fontSize = c.font_size || 11;
-    const iconSize = c.icon_size || 20;
-
     return html`
       <ha-card>
+        <ha-icon icon="mdi:information-outline" class="help-icon" @click=${this._toggleHelp}></ha-icon>
+
+        ${this._showHelp ? html`
+          <div class="help-overlay" @click=${this._toggleHelp}>
+            <div class="help-content">
+               <h3>⚡ Aide Energie Card</h3>
+               <p><b>Tri :</b> Automatique par puissance décroissante.</p>
+               <p><b>Seuil :</b> Les appareils < 5W sont masqués.</p>
+               <p><b>Configuration :</b> Les noms se règlent par ligne dans l'éditeur.</p>
+               <p><b>Couleurs :</b> Vert (<100W), Cyan (<1kW), Orange (<2.5kW), Rouge (>2.5kW).</p>
+               <button class="close-btn">FERMER</button>
+            </div>
+          </div>
+        ` : ''}
+
         <div class="card-header">
-          <span class="title" style="font-size: ${titleSize}px">${c.title || 'ENERGIE-CARD'}</span>
+          <span class="title" style="font-size: ${c.title_size || 14}px">${c.title || 'ENERGIE-CARD'}</span>
           <div class="header-badges">
-            <span class="badge info" style="font-size: ${badgeSize}px">CONSO: ${Math.round(totalDevicesPower)}W</span>
-            <span class="badge autarky" style="font-size: ${badgeSize}px">${autarky}% AUTONOME</span>
+            <span class="badge info" style="font-size: ${c.badge_size || 9}px">CONSO: ${Math.round(totalDevicesPower)}W</span>
+            <span class="badge autarky" style="font-size: ${c.badge_size || 9}px">${autarky}% AUTONOME</span>
           </div>
         </div>
         <div class="progress-container"><div class="progress-bar" style="width: ${autarky}%"></div></div>
@@ -149,11 +169,11 @@ class EnergieCard extends LitElement {
               <div class="device-item" style="border-color: ${color}44">
                 <ha-icon class="active-icon" 
                          icon="${d.stateObj?.attributes.icon || 'mdi:flash'}" 
-                         style="--mdc-icon-size: ${iconSize}px; color: ${color}; filter: drop-shadow(0 0 3px ${color})">
+                         style="--mdc-icon-size: ${c.icon_size || 20}px; color: ${color}; filter: drop-shadow(0 0 3px ${color})">
                 </ha-icon>
                 <div class="dev-info">
-                   <span class="dev-val" style="font-size: ${fontSize}px; color: ${color}">${pwr}W</span>
-                   <span class="dev-name" style="font-size: ${fontSize - 1}px">${d.name}</span>
+                   <span class="dev-val" style="font-size: ${c.font_size || 11}px; color: ${color}">${pwr}W</span>
+                   <span class="dev-name" style="font-size: ${(c.font_size || 11) - 1}px">${d.name}</span>
                 </div>
               </div>
             `;
@@ -164,8 +184,20 @@ class EnergieCard extends LitElement {
   }
 
   static styles = css`
-    ha-card { background: rgba(13, 13, 13, 0.95); backdrop-filter: blur(10px); border: 1px solid rgba(0, 249, 249, 0.3); border-radius: 20px; padding: 18px; color: #fff; }
-    .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px; }
+    ha-card { background: rgba(13, 13, 13, 0.95); backdrop-filter: blur(10px); border: 1px solid rgba(0, 249, 249, 0.3); border-radius: 20px; padding: 18px; color: #fff; position: relative; overflow: hidden; }
+    
+    /* --- STYLE DU POPUP D'AIDE --- */
+    .help-icon { position: absolute; top: 15px; right: 15px; cursor: pointer; opacity: 0.5; transition: 0.3s; z-index: 10; }
+    .help-icon:hover { opacity: 1; color: #00f9f9; }
+    .help-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 100; display: flex; align-items: center; justify-content: center; animation: fadeIn 0.3s ease; }
+    .help-content { padding: 20px; text-align: left; max-width: 80%; }
+    .help-content h3 { color: #00f9f9; margin-top: 0; border-bottom: 1px solid #00f9f9; padding-bottom: 10px; }
+    .help-content p { font-size: 12px; margin: 8px 0; line-height: 1.4; }
+    .close-btn { background: #00f9f9; border: none; padding: 8px 15px; border-radius: 5px; font-weight: bold; cursor: pointer; margin-top: 15px; width: 100%; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    /* ----------------------------- */
+
+    .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px; padding-right: 30px; }
     .title { font-weight: 800; color: #00f9f9; letter-spacing: 1px; }
     .header-badges { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
     .badge { padding: 5px 14px; border-radius: 20px; font-weight: bold; border: 1px solid rgba(255,255,255,0.1); white-space: nowrap; }
@@ -178,38 +210,11 @@ class EnergieCard extends LitElement {
     .val { display: block; font-weight: bold; font-size: 16px; margin: 4px 0; }
     .label { font-size: 8px; opacity: 0.4; font-weight: bold; text-transform: uppercase; }
     .bat-mini { font-size: 7px; color: #00f9f9; opacity: 0.7; }
-    
-    /* --- MODIFICATION ICI : GRILLE ÉLARGIE --- */
-    .device-list { 
-      display: grid; 
-      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); 
-      gap: 12px; 
-      margin-top: 22px; 
-    }
-    .device-item { 
-      background: rgba(255,255,255,0.03); 
-      padding: 12px 8px; 
-      border-radius: 14px; 
-      border: 1px solid transparent; 
-      display: flex; 
-      flex-direction: column; 
-      align-items: center; 
-      gap: 6px; 
-      transition: all 0.3s ease;
-      min-height: 80px;
-      justify-content: center;
-    }
-    /* ---------------------------------------- */
-
+    .device-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 12px; margin-top: 22px; }
+    .device-item { background: rgba(255,255,255,0.03); padding: 12px 8px; border-radius: 14px; border: 1px solid transparent; display: flex; flex-direction: column; align-items: center; gap: 6px; transition: all 0.3s ease; min-height: 85px; justify-content: center; }
     .dev-info { display: flex; flex-direction: column; align-items: center; width: 100%; text-align: center; }
     .dev-val { font-weight: bold; }
-    .dev-name { 
-      opacity: 0.8; 
-      line-height: 1.1;
-      word-break: break-word; /* Permet de couper les mots si trop long */
-      display: block;
-      margin-top: 2px;
-    }
+    .dev-name { opacity: 0.8; line-height: 1.1; word-break: break-word; display: block; margin-top: 2px; }
     .active-icon { animation: pulse 2.5s infinite ease-in-out; }
     @keyframes pulse { 0%, 100% { transform: scale(1); opacity: 0.7; } 50% { transform: scale(1.1); opacity: 1; } }
     ha-icon { color: #00f9f9; }
@@ -223,6 +228,6 @@ window.customCards = window.customCards || [];
 window.customCards.push({
   type: "energie-card",
   name: "Energie Card Ultimate",
-  description: "Dashboard 60 appareils avec cartes larges et tri par puissance.",
+  description: "Dashboard 60 appareils avec aide intégrée.",
   preview: true
 });
