@@ -1,4 +1,4 @@
-# ⚡ Energie Card Ultimate (Edition Marstek & ZLinky)
+# ⚡ Energie Card
 
 [![HACS](https://img.shields.io/badge/HACS-Default-blue.svg)](https://github.com/hacs/integration)
 ![Version](https://img.shields.io/github/v/release/xez7082/energie-card-ultimate?include_prereleases)
