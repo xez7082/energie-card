@@ -69,16 +69,26 @@ class EnergieCard extends LitElement {
     const total_cons = solar + (grid > 0 ? grid : 0);
     const autarky = Math.min(Math.round((solar / total_cons) * 100), 100) || 0;
 
+    // Calcul de la consommation totale des appareils listés
+    let totalDevicesPower = 0;
     const activeDevices = (c.devices || []).filter(id => {
       const s = this.hass.states[id];
-      return s && parseFloat(s.state) > 5;
+      if (s) {
+        const val = parseFloat(s.state) || 0;
+        totalDevicesPower += val;
+        return val > 5;
+      }
+      return false;
     });
 
     return html`
       <ha-card>
         <div class="card-header">
           <span class="title">${c.title || 'ENERGIE-CARD'}</span>
-          <span class="autarky">${autarky}% AUTONOME</span>
+          <div class="header-badges">
+            <span class="badge info">CONSO APPAREILS: ${Math.round(totalDevicesPower)}W</span>
+            <span class="badge autarky">${autarky}% AUTONOME</span>
+          </div>
         </div>
         <div class="progress-container"><div class="progress-bar" style="width: ${autarky}%"></div></div>
 
@@ -121,8 +131,12 @@ class EnergieCard extends LitElement {
   static styles = css`
     ha-card { background: rgba(13, 13, 13, 0.95); backdrop-filter: blur(10px); border: 1px solid rgba(0, 249, 249, 0.3); border-radius: 20px; padding: 18px; color: #fff; }
     .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
-    .title { font-weight: 800; color: #00f9f9; letter-spacing: 1px; }
-    .autarky { font-size: 9px; background: rgba(0, 249, 249, 0.1); color: #00f9f9; padding: 3px 10px; border-radius: 15px; border: 1px solid rgba(0, 249, 249, 0.2); font-weight: bold; }
+    .title { font-weight: 800; color: #00f9f9; letter-spacing: 1px; font-size: 14px; }
+    .header-badges { display: flex; gap: 8px; }
+    .badge { font-size: 9px; padding: 3px 10px; border-radius: 15px; font-weight: bold; border: 1px solid rgba(0, 249, 249, 0.2); }
+    .badge.autarky { background: rgba(0, 249, 249, 0.1); color: #00f9f9; }
+    .badge.info { background: rgba(255, 255, 255, 0.05); color: #fff; border-color: rgba(255,255,255,0.1); }
+    
     .progress-container { height: 5px; background: rgba(255,255,255,0.05); border-radius: 10px; margin-bottom: 22px; overflow: hidden; }
     .progress-bar { height: 100%; background: linear-gradient(90deg, #00f9f9, #008f8f); box-shadow: 0 0 10px #00f9f9; transition: width 1.5s ease-in-out; }
     .main-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; text-align: center; }
@@ -130,6 +144,7 @@ class EnergieCard extends LitElement {
     .val { display: block; font-weight: bold; font-size: 16px; color: #fff; margin: 4px 0; }
     .label { font-size: 8px; opacity: 0.4; font-weight: bold; }
     .bat-mini { font-size: 7px; color: #00f9f9; opacity: 0.7; }
+    
     .device-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(85px, 1fr)); gap: 10px; margin-top: 22px; }
     .device-item { background: rgba(255,255,255,0.04); padding: 10px 5px; border-radius: 14px; border: 1px solid rgba(0, 249, 249, 0.05); display: flex; flex-direction: column; align-items: center; gap: 4px; }
     .dev-info { display: flex; flex-direction: column; align-items: center; width: 100%; }
@@ -148,6 +163,6 @@ window.customCards = window.customCards || [];
 window.customCards.push({
   type: "energie-card",
   name: "energie-card",
-  description: "Dashboard Marstek & ZLinky avec Watts et icônes animées.",
+  description: "Dashboard Marstek & ZLinky avec cumul consommation appareils.",
   preview: true
 });
