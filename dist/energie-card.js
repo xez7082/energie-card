@@ -31,6 +31,7 @@ class EnergieCardEditor extends LitElement {
         { name: "linky_name", label: "Nom Réseau", selector: { text: {} } }
       ],
       [ 
+        { name: "bat_font_size", label: "Taille texte Batterie (px)", selector: { number: { min: 10, max: 40, mode: "slider" } } },
         { name: "battery1", label: "Batterie 1 (%)", selector: { entity: { domain: "sensor" } } },
         { name: "bat1_name", label: "Nom B1", selector: { text: {} } },
         { name: "battery2", label: "Batterie 2 (%)", selector: { entity: { domain: "sensor" } } },
@@ -85,11 +86,9 @@ class EnergieCard extends LitElement {
     if (!this.hass || !this.config) return html``;
     const c = this.config;
     
-    // Données principales
     const solar = Math.round(parseFloat(this.hass.states[c.solar]?.state) || 0);
     const grid = Math.round(parseFloat(this.hass.states[c.linky]?.state) || 0);
     
-    // Logique Batterie Conditionnelle
     const hasBattery = c.battery1 || c.battery2 || c.battery3;
     const b1 = c.battery1 ? Math.round(parseFloat(this.hass.states[c.battery1]?.state) || 0) : null;
     const b2 = c.battery2 ? Math.round(parseFloat(this.hass.states[c.battery2]?.state) || 0) : null;
@@ -98,7 +97,6 @@ class EnergieCard extends LitElement {
     const bat_values = [b1, b2, b3].filter(v => v !== null);
     const avg_bat = bat_values.length > 0 ? Math.round(bat_values.reduce((a, b) => a + b, 0) / bat_values.length) : 0;
 
-    // Autonomie
     const total_cons = solar + (grid > 0 ? grid : 0);
     const autarky = Math.min(Math.round((solar / (total_cons || 1)) * 100), 100) || 0;
 
@@ -108,7 +106,6 @@ class EnergieCard extends LitElement {
     if (autarky < 20) autarkyColor = "#ff4d4d";
     if (autarky < 5) isCritical = true;
 
-    // Appareils
     const customNamesArr = c.custom_names ? c.custom_names.split(/,|\n/).map(n => n.trim()) : [];
     let totalDevicesPower = 0;
     const activeDevices = (c.devices || []).map((id, index) => {
@@ -130,9 +127,7 @@ class EnergieCard extends LitElement {
           <div class="help-overlay" @click=${this._toggleHelp}>
             <div class="help-content">
                <h3>⚡ Aide Energie Card</h3>
-               <p><b>Batteries :</b> Le bloc s'affiche uniquement si un capteur est configuré.</p>
-               <p><b>SINSTS :</b> Puissance réseau instantanée (VA/W).</p>
-               <p><b>Alerte :</b> Clignotement si autonomie < 5%.</p>
+               <p><b>Réglages :</b> Allez dans l'onglet "Batteries" pour ajuster la taille du texte central.</p>
                <button class="close-btn">FERMER</button>
             </div>
           </div>
@@ -165,8 +160,8 @@ class EnergieCard extends LitElement {
 
           ${hasBattery ? html`
             <div class="stat-box battery">
-              <ha-icon icon="mdi:battery-high"></ha-icon>
-              <span class="val">${avg_bat}%</span>
+              <ha-icon icon="mdi:battery-high" style="--mdc-icon-size: ${(c.bat_font_size || 16) + 4}px"></ha-icon>
+              <span class="val" style="font-size: ${c.bat_font_size || 16}px">${avg_bat}%</span>
               <div class="bat-mini">
                  ${b1 !== null ? html`${c.bat1_name || 'B1'}:${b1}% ` : ''}
                  ${b2 !== null ? html`| ${c.bat2_name || 'B2'}:${b2}% ` : ''}
@@ -230,9 +225,9 @@ class EnergieCard extends LitElement {
     .progress-container { height: 10px; background: rgba(255,255,255,0.05); border-radius: 12px; overflow: hidden; }
     .progress-bar { height: 100%; transition: width 1.5s ease-in-out, background 0.5s ease; }
     
-    .main-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); gap: 10px; text-align: center; }
+    .main-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); gap: 10px; text-align: center; align-items: end; }
     .stat-box { background: rgba(255,255,255,0.02); padding: 12px 5px; border-radius: 15px; border: 1px solid rgba(255,255,255,0.05); }
-    .val { display: block; font-weight: bold; font-size: 16px; margin: 4px 0; }
+    .val { display: block; font-weight: bold; margin: 4px 0; }
     .label { font-size: 8px; opacity: 0.4; text-transform: uppercase; font-weight: bold; }
     .bat-mini { font-size: 7px; color: #00f9f9; opacity: 0.8; }
     
@@ -259,6 +254,6 @@ window.customCards = window.customCards || [];
 window.customCards.push({
   type: "energie-card",
   name: "Energie Card Ultimate",
-  description: "Dashboard intelligent avec icônes et masquage automatique.",
+  description: "Dashboard intelligent avec texte batterie réglable.",
   preview: true
 });
