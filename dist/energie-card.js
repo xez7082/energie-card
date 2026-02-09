@@ -99,6 +99,8 @@ class EnergieCard extends LitElement {
     return h > 48 ? "+48h" : `${Math.floor(h)}h`;
   }
 
+  _getPowerColor(w) { return w < 100 ? "#00ff88" : w < 1000 ? "#00f9f9" : "#ff9500"; }
+
   render() {
     if (!this.hass || !this.config) return html``;
     const c = this.config;
@@ -168,8 +170,10 @@ class EnergieCard extends LitElement {
 
         <div class="device-list">
           ${activeDevices.map(d => html`
-            <div class="device-item" style="border-top: 2px solid ${this._getPowerColor(d.state)}">
-              <ha-icon icon="${d.stateObj?.attributes.icon || 'mdi:flash'}" style="color: ${this._getPowerColor(d.state)}"></ha-icon>
+            <div class="device-item" style="border-left: 3px solid ${this._getPowerColor(d.state)}">
+              <div class="icon-container">
+                <ha-icon icon="${d.stateObj?.attributes.icon || 'mdi:flash'}" style="color: ${this._getPowerColor(d.state)}"></ha-icon>
+              </div>
               <div class="dev-info">
                  <span class="dev-val" style="color: ${this._getPowerColor(d.state)}">${Math.round(d.state)}W</span>
                  <span class="dev-name">${d.name}</span>
@@ -180,8 +184,6 @@ class EnergieCard extends LitElement {
       </ha-card>
     `;
   }
-
-  _getPowerColor(w) { return w < 100 ? "#00ff88" : w < 1000 ? "#00f9f9" : "#ff9500"; }
 
   static styles = css`
     ha-card { background: #0a0a0a; border-radius: 20px; padding: 18px; color: #fff; border: 2px solid transparent; transition: 0.5s; overflow: hidden; }
@@ -202,35 +204,48 @@ class EnergieCard extends LitElement {
     .autarky-fill { height: 100%; transition: width 2s ease; }
     .autarky-text { position: absolute; width: 100%; text-align: center; top: 1px; font-size: 8px; font-weight: 900; }
 
-    /* NOUVEAU STYLE VERTICAL POUR LES APPAREILS */
-    .device-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 10px; }
+    /* CORRECTION ICI : ALIGNEMENT GAUCHE STRICT */
+    .device-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(135px, 1fr)); gap: 10px; }
     .device-item { 
       background: #111; 
-      padding: 12px 8px; 
+      padding: 12px 10px; 
       border-radius: 12px; 
       display: flex; 
-      flex-direction: column; /* Aligne l'icône et le texte verticalement */
+      flex-direction: row; 
       align-items: center; 
-      gap: 6px; 
-      text-align: center;
+      justify-content: flex-start; /* Force l'icône à gauche */
+      gap: 12px;
     }
-    .dev-info { display: flex; flex-direction: column; width: 100%; }
-    .dev-val { font-weight: 900; font-size: 15px; line-height: 1.2; }
+    .icon-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0; /* Empêche l'icône de s'écraser */
+    }
+    .dev-info { 
+      display: flex; 
+      flex-direction: column; 
+      align-items: flex-start; /* Aligne le texte à gauche aussi */
+      min-width: 0; 
+      flex: 1;
+    }
+    .dev-val { font-weight: 900; font-size: 14px; line-height: 1.1; text-align: left; }
     .dev-name { 
-      font-size: 10px; 
-      color: #888; 
+      font-size: 9px; 
+      color: #777; 
       text-transform: uppercase; 
       font-weight: bold;
       overflow: hidden; 
       text-overflow: ellipsis; 
       white-space: nowrap; 
       margin-top: 2px;
+      text-align: left;
     }
 
     .badge { padding: 4px 8px; border-radius: 4px; font-size: 9px; font-weight: 900; }
     .charge { background: #00ff8815; color: #00ff88; }
     .discharge { background: #ff4d4d15; color: #ff4d4d; }
-    ha-icon { --mdc-icon-size: 20px; color: #00f9f9; z-index: 1; }
+    ha-icon { --mdc-icon-size: 22px; color: #00f9f9; }
   `;
 }
 
@@ -240,7 +255,7 @@ customElements.define("energie-card", EnergieCard);
 window.customCards = window.customCards || [];
 window.customCards.push({
   type: "energie-card",
-  name: "Energie Card Hybride Vertical",
-  description: "Version 2.6 avec noms d'appareils sous les Watts.",
+  name: "Energie Card Correction Gauche",
+  description: "Correction finale de l'alignement des icônes.",
   preview: true
 });
