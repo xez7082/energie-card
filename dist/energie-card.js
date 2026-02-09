@@ -39,7 +39,7 @@ class EnergieCardEditor extends LitElement {
         { name: "bat3_name", label: "Nom B3", selector: { text: {} } }
       ],
       [ 
-        { name: "devices", label: "Sélectionner les Appareils (max 60)", selector: { entity: { multiple: true, domain: "sensor" } } },
+        { name: "devices", label: "Sélectionner les Appareils", selector: { entity: { multiple: true, domain: "sensor" } } },
         { name: "custom_names", label: "Noms des appareils (Un par ligne)", selector: { text: { multiline: true } } },
         { name: "font_size", label: "Taille texte (px)", selector: { number: { min: 8, max: 20, mode: "slider" } } },
         { name: "icon_size", label: "Taille icônes (px)", selector: { number: { min: 15, max: 40, mode: "slider" } } }
@@ -72,9 +72,7 @@ class EnergieCard extends LitElement {
 
   setConfig(config) { this.config = config; }
 
-  _toggleHelp() {
-    this._showHelp = !this._showHelp;
-  }
+  _toggleHelp() { this._showHelp = !this._showHelp; }
 
   _getPowerColor(watts) {
     if (watts < 100) return "#00ff88"; 
@@ -86,15 +84,23 @@ class EnergieCard extends LitElement {
   render() {
     if (!this.hass || !this.config) return html``;
     const c = this.config;
+    
+    // Données principales
     const solar = Math.round(parseFloat(this.hass.states[c.solar]?.state) || 0);
     const grid = Math.round(parseFloat(this.hass.states[c.linky]?.state) || 0);
-    const b1 = Math.round(parseFloat(this.hass.states[c.battery1]?.state) || 0);
-    const b2 = Math.round(parseFloat(this.hass.states[c.battery2]?.state) || 0);
-    const b3 = Math.round(parseFloat(this.hass.states[c.battery3]?.state) || 0);
     
-    const avg_bat = Math.round((b1 + b2 + b3) / 3) || 0;
+    // Logique Batterie Conditionnelle
+    const hasBattery = c.battery1 || c.battery2 || c.battery3;
+    const b1 = c.battery1 ? Math.round(parseFloat(this.hass.states[c.battery1]?.state) || 0) : null;
+    const b2 = c.battery2 ? Math.round(parseFloat(this.hass.states[c.battery2]?.state) || 0) : null;
+    const b3 = c.battery3 ? Math.round(parseFloat(this.hass.states[c.battery3]?.state) || 0) : null;
+    
+    const bat_values = [b1, b2, b3].filter(v => v !== null);
+    const avg_bat = bat_values.length > 0 ? Math.round(bat_values.reduce((a, b) => a + b, 0) / bat_values.length) : 0;
+
+    // Autonomie
     const total_cons = solar + (grid > 0 ? grid : 0);
-    const autarky = Math.min(Math.round((solar / total_cons) * 100), 100) || 0;
+    const autarky = Math.min(Math.round((solar / (total_cons || 1)) * 100), 100) || 0;
 
     let autarkyColor = "#00f9f9";
     let isCritical = false;
@@ -102,24 +108,19 @@ class EnergieCard extends LitElement {
     if (autarky < 20) autarkyColor = "#ff4d4d";
     if (autarky < 5) isCritical = true;
 
+    // Appareils
     const customNamesArr = c.custom_names ? c.custom_names.split(/,|\n/).map(n => n.trim()) : [];
-
     let totalDevicesPower = 0;
-    const allDevices = (c.devices || []).map((id, index) => {
+    const activeDevices = (c.devices || []).map((id, index) => {
       const s = this.hass.states[id];
       const val = s ? parseFloat(s.state) || 0 : 0;
       totalDevicesPower += val;
       return { 
-        id, 
         state: val, 
         stateObj: s, 
-        name: customNamesArr[index] && customNamesArr[index] !== "" ? customNamesArr[index] : (s?.attributes.friendly_name || id.split('.')[1])
+        name: customNamesArr[index] || (s?.attributes.friendly_name || id.split('.')[1])
       };
-    });
-
-    const activeDevices = allDevices
-      .filter(d => d.state > 5)
-      .sort((a, b) => b.state - a.state);
+    }).filter(d => d.state > 5).sort((a, b) => b.state - a.state);
 
     return html`
       <ha-card>
@@ -129,9 +130,9 @@ class EnergieCard extends LitElement {
           <div class="help-overlay" @click=${this._toggleHelp}>
             <div class="help-content">
                <h3>⚡ Aide Energie Card</h3>
-               <p><b>Tri :</b> Automatique par puissance décroissante.</p>
-               <p><b>Alertes :</b> Clignotement sous 5% d'autonomie.</p>
-               <p><b>Icônes :</b> Utilisez les icônes de vos entités Home Assistant.</p>
+               <p><b>Batteries :</b> Le bloc s'affiche uniquement si un capteur est configuré.</p>
+               <p><b>SINSTS :</b> Puissance réseau instantanée (VA/W).</p>
+               <p><b>Alerte :</b> Clignotement si autonomie < 5%.</p>
                <button class="close-btn">FERMER</button>
             </div>
           </div>
@@ -161,13 +162,19 @@ class EnergieCard extends LitElement {
             <span class="val">${solar}W</span>
             <span class="label">${c.solar_name || 'SOLAIRE'}</span>
           </div>
-          <div class="stat-box battery">
-            <ha-icon icon="mdi:battery-high"></ha-icon>
-            <span class="val">${avg_bat}%</span>
-            <div class="bat-mini">
-               ${c.bat1_name || 'B1'}:${b1}%|${c.bat2_name || 'B2'}:${b2}%|${c.bat3_name || 'B3'}:${b3}%
+
+          ${hasBattery ? html`
+            <div class="stat-box battery">
+              <ha-icon icon="mdi:battery-high"></ha-icon>
+              <span class="val">${avg_bat}%</span>
+              <div class="bat-mini">
+                 ${b1 !== null ? html`${c.bat1_name || 'B1'}:${b1}% ` : ''}
+                 ${b2 !== null ? html`| ${c.bat2_name || 'B2'}:${b2}% ` : ''}
+                 ${b3 !== null ? html`| ${c.bat3_name || 'B3'}:${b3}%` : ''}
+              </div>
             </div>
-          </div>
+          ` : ''}
+
           <div class="stat-box grid">
             <ha-icon icon="mdi:transmission-tower"></ha-icon>
             <span class="val" style="color: ${this._getPowerColor(grid)}">${grid}W</span>
@@ -177,17 +184,14 @@ class EnergieCard extends LitElement {
 
         <div class="device-list">
           ${activeDevices.map(d => {
-            const pwr = Math.round(d.state);
-            const color = this._getPowerColor(pwr);
-            const icon = d.stateObj?.attributes.icon || 'mdi:flash';
+            const color = this._getPowerColor(d.state);
             return html`
               <div class="device-item" style="border-color: ${color}44">
-                <ha-icon class="active-icon" 
-                         icon="${icon}" 
+                <ha-icon class="active-icon" icon="${d.stateObj?.attributes.icon || 'mdi:flash'}" 
                          style="--mdc-icon-size: ${c.icon_size || 22}px; color: ${color}; filter: drop-shadow(0 0 3px ${color})">
                 </ha-icon>
                 <div class="dev-info">
-                   <span class="dev-val" style="font-size: ${c.font_size || 12}px; color: ${color}">${pwr}W</span>
+                   <span class="dev-val" style="font-size: ${c.font_size || 12}px; color: ${color}">${Math.round(d.state)}W</span>
                    <span class="dev-name" style="font-size: ${(c.font_size || 12) - 2}px">${d.name}</span>
                 </div>
               </div>
@@ -200,7 +204,6 @@ class EnergieCard extends LitElement {
 
   static styles = css`
     ha-card { background: rgba(13, 13, 13, 0.95); backdrop-filter: blur(10px); border: 1px solid rgba(0, 249, 249, 0.3); border-radius: 20px; padding: 18px; color: #fff; position: relative; overflow: hidden; }
-    
     .help-icon { position: absolute; top: 15px; right: 15px; cursor: pointer; opacity: 0.5; z-index: 10; }
     .help-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.92); z-index: 100; display: flex; align-items: center; justify-content: center; }
     .help-content { padding: 20px; text-align: center; max-width: 85%; }
@@ -217,7 +220,6 @@ class EnergieCard extends LitElement {
       border-radius: 6px; border: 1px solid transparent; font-weight: bold;
     }
     .progress-label ha-icon { --mdc-icon-size: 20px; margin-top: -7px; }
-    
     .critical-blink { animation: alert-blink 0.8s infinite alternate; }
     @keyframes alert-blink { from { opacity: 1; } to { opacity: 0.4; } }
 
@@ -228,10 +230,11 @@ class EnergieCard extends LitElement {
     .progress-container { height: 10px; background: rgba(255,255,255,0.05); border-radius: 12px; overflow: hidden; }
     .progress-bar { height: 100%; transition: width 1.5s ease-in-out, background 0.5s ease; }
     
-    .main-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; text-align: center; }
+    .main-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); gap: 10px; text-align: center; }
     .stat-box { background: rgba(255,255,255,0.02); padding: 12px 5px; border-radius: 15px; border: 1px solid rgba(255,255,255,0.05); }
     .val { display: block; font-weight: bold; font-size: 16px; margin: 4px 0; }
     .label { font-size: 8px; opacity: 0.4; text-transform: uppercase; font-weight: bold; }
+    .bat-mini { font-size: 7px; color: #00f9f9; opacity: 0.8; }
     
     .device-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 10px; margin-top: 25px; }
     .device-item { 
@@ -256,6 +259,6 @@ window.customCards = window.customCards || [];
 window.customCards.push({
   type: "energie-card",
   name: "Energie Card Ultimate",
-  description: "Dashboard optimisé avec icônes et alertes.",
+  description: "Dashboard intelligent avec icônes et masquage automatique.",
   preview: true
 });
