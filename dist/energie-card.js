@@ -78,16 +78,14 @@ class EnergieCard extends LitElement {
     if (this._history[type].length > 40) this._history[type].shift();
   }
 
-  // CALCUL ADAPTÉ AUX CAPACITÉS HYBRIDES
   _calculateAutonomy(soc, power, c) {
     const totalWh = (parseFloat(c.cap_st) || 2048) + (parseFloat(c.cap_mv) || 5120);
     if (!power || Math.abs(power) < 10) return "--h --m";
-    
-    if (power < 0) { // Décharge
+    if (power < 0) {
       const remainingWh = (soc / 100) * totalWh;
       const hours = remainingWh / Math.abs(power);
       return `Vide: ${Math.floor(hours)}h${Math.round((hours % 1) * 60)}m`;
-    } else { // Charge
+    } else {
       const toFillWh = ((100 - soc) / 100) * totalWh;
       const hours = toFillWh / power;
       return `Pleine: ${Math.floor(hours)}h${Math.round((hours % 1) * 60)}m`;
@@ -97,7 +95,7 @@ class EnergieCard extends LitElement {
   _calculateSurvival(soc, c) {
     const totalWh = (parseFloat(c.cap_st) || 2048) + (parseFloat(c.cap_mv) || 5120);
     const remWh = (soc / 100) * totalWh;
-    const h = remWh / 200; // Conso de survie estimée à 200W
+    const h = remWh / 200; 
     return h > 48 ? "+48h" : `${Math.floor(h)}h`;
   }
 
@@ -170,10 +168,10 @@ class EnergieCard extends LitElement {
 
         <div class="device-list">
           ${activeDevices.map(d => html`
-            <div class="device-item" style="border-left: 3px solid ${this._getPowerColor(d.state)}">
+            <div class="device-item" style="border-top: 2px solid ${this._getPowerColor(d.state)}">
               <ha-icon icon="${d.stateObj?.attributes.icon || 'mdi:flash'}" style="color: ${this._getPowerColor(d.state)}"></ha-icon>
               <div class="dev-info">
-                 <span class="dev-val">${Math.round(d.state)}W</span>
+                 <span class="dev-val" style="color: ${this._getPowerColor(d.state)}">${Math.round(d.state)}W</span>
                  <span class="dev-name">${d.name}</span>
               </div>
             </div>
@@ -203,14 +201,36 @@ class EnergieCard extends LitElement {
     .autarky-bar-container { height: 12px; background: #1a1a1a; border-radius: 6px; position: relative; overflow: hidden; margin-bottom: 20px; border: 1px solid #333; }
     .autarky-fill { height: 100%; transition: width 2s ease; }
     .autarky-text { position: absolute; width: 100%; text-align: center; top: 1px; font-size: 8px; font-weight: 900; }
-    .device-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
-    .device-item { background: #111; padding: 10px; border-radius: 10px; display: flex; align-items: center; gap: 10px; }
-    .dev-val { font-weight: 900; font-size: 13px; }
-    .dev-name { font-size: 10px; color: #888; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    /* NOUVEAU STYLE VERTICAL POUR LES APPAREILS */
+    .device-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 10px; }
+    .device-item { 
+      background: #111; 
+      padding: 12px 8px; 
+      border-radius: 12px; 
+      display: flex; 
+      flex-direction: column; /* Aligne l'icône et le texte verticalement */
+      align-items: center; 
+      gap: 6px; 
+      text-align: center;
+    }
+    .dev-info { display: flex; flex-direction: column; width: 100%; }
+    .dev-val { font-weight: 900; font-size: 15px; line-height: 1.2; }
+    .dev-name { 
+      font-size: 10px; 
+      color: #888; 
+      text-transform: uppercase; 
+      font-weight: bold;
+      overflow: hidden; 
+      text-overflow: ellipsis; 
+      white-space: nowrap; 
+      margin-top: 2px;
+    }
+
     .badge { padding: 4px 8px; border-radius: 4px; font-size: 9px; font-weight: 900; }
     .charge { background: #00ff8815; color: #00ff88; }
     .discharge { background: #ff4d4d15; color: #ff4d4d; }
-    ha-icon { --mdc-icon-size: 22px; color: #00f9f9; z-index: 1; }
+    ha-icon { --mdc-icon-size: 20px; color: #00f9f9; z-index: 1; }
   `;
 }
 
@@ -220,7 +240,7 @@ customElements.define("energie-card", EnergieCard);
 window.customCards = window.customCards || [];
 window.customCards.push({
   type: "energie-card",
-  name: "Energie Card Hybride",
-  description: "Version spéciale StorCube (2kWh) + Marstek Venus (5kWh).",
+  name: "Energie Card Hybride Vertical",
+  description: "Version 2.6 avec noms d'appareils sous les Watts.",
   preview: true
 });
