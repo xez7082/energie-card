@@ -1,6 +1,7 @@
 {
-  "name": "Energie Card Lumina",
-  "render_readme": true,
-  "category": "plugin",
-  "filename": "energie-card.js"
+  "name": "Energie Card Ultimate",
+  "content_type": "plugin",
+  "render_as_bat": false,
+  "filename": "energie-card.js",
+  "description": "Carte optimisée pour stockage hybride StorCube/Marstek avec suivi de talon énergétique."
 }
