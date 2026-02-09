@@ -4,6 +4,9 @@ import {
   css
 } from "https://unpkg.com/lit-element@2.4.0/lit-element.js?module";
 
+/**
+ * EDITEUR DE LA CARTE (Interface de configuration)
+ */
 class EnergieCardEditor extends LitElement {
   static get properties() { return { hass: {}, _config: {}, _tab: { type: Number } }; }
   constructor() { super(); this._tab = 0; }
@@ -22,18 +25,19 @@ class EnergieCardEditor extends LitElement {
     if (!this.hass || !this._config) return html``;
     const schemas = [
       [ 
-        { name: "title", label: "Titre", selector: { text: {} } },
+        { name: "title", label: "Titre du Dashboard", selector: { text: {} } },
         { name: "solar", label: "Solaire (W)", selector: { entity: { domain: "sensor" } } },
-        { name: "linky", label: "Réseau SINSTS (W)", selector: { entity: { domain: "sensor" } } }
+        { name: "linky", label: "Réseau (W)", selector: { entity: { domain: "sensor" } } }
       ],
       [ 
-        { name: "battery_soc", label: "Entité Batterie Principale (%)", selector: { entity: { domain: "sensor" } } },
+        { name: "battery_soc", label: "Entité Batterie (%)", selector: { entity: { domain: "sensor" } } },
         { name: "cap_st", label: "Capacité StorCube totale (Wh)", selector: { number: { min: 0, max: 5000, mode: "box" } } },
-        { name: "cap_mv", label: "Capacité Marstek Venus (Wh)", selector: { number: { min: 0, max: 10000, mode: "box" } } }
+        { name: "cap_mv", label: "Capacité Marstek Venus (Wh)", selector: { number: { min: 0, max: 10000, mode: "box" } } },
+        { name: "talon", label: "Ton Talon Électrique (W)", selector: { number: { min: 0, max: 1000, mode: "box" } } }
       ],
       [ 
-        { name: "devices", label: "Appareils", selector: { entity: { multiple: true, domain: "sensor" } } },
-        { name: "custom_names", label: "Noms (Un par ligne)", selector: { text: { multiline: true } } }
+        { name: "devices", label: "Appareils à suivre", selector: { entity: { multiple: true, domain: "sensor" } } },
+        { name: "custom_names", label: "Noms personnalisés (Un par ligne)", selector: { text: { multiline: true } } }
       ]
     ];
     return html`
@@ -52,6 +56,9 @@ class EnergieCardEditor extends LitElement {
   `;
 }
 
+/**
+ * LOGIQUE ET AFFICHAGE DE LA CARTE
+ */
 class EnergieCard extends LitElement {
   static getConfigElement() { return document.createElement("energie-card-editor"); }
   static get properties() { return { hass: {}, config: {}, _history: { type: Object } }; }
@@ -80,23 +87,14 @@ class EnergieCard extends LitElement {
 
   _calculateAutonomy(soc, power, c) {
     const totalWh = (parseFloat(c.cap_st) || 2048) + (parseFloat(c.cap_mv) || 5120);
-    if (!power || Math.abs(power) < 10) return "--h --m";
+    if (!power || Math.abs(power) < 15) return "--h --m";
     if (power < 0) {
-      const remainingWh = (soc / 100) * totalWh;
-      const hours = remainingWh / Math.abs(power);
+      const hours = ((soc / 100) * totalWh) / Math.abs(power);
       return `Vide: ${Math.floor(hours)}h${Math.round((hours % 1) * 60)}m`;
     } else {
-      const toFillWh = ((100 - soc) / 100) * totalWh;
-      const hours = toFillWh / power;
+      const hours = (((100 - soc) / 100) * totalWh) / power;
       return `Pleine: ${Math.floor(hours)}h${Math.round((hours % 1) * 60)}m`;
     }
-  }
-
-  _calculateSurvival(soc, c) {
-    const totalWh = (parseFloat(c.cap_st) || 2048) + (parseFloat(c.cap_mv) || 5120);
-    const remWh = (soc / 100) * totalWh;
-    const h = remWh / 200; 
-    return h > 48 ? "+48h" : `${Math.floor(h)}h`;
   }
 
   _getPowerColor(w) { return w < 100 ? "#00ff88" : w < 1000 ? "#00f9f9" : "#ff9500"; }
@@ -104,6 +102,7 @@ class EnergieCard extends LitElement {
   render() {
     if (!this.hass || !this.config) return html``;
     const c = this.config;
+    const talon = parseFloat(c.talon) || 150;
     
     const solar = Math.round(parseFloat(this.hass.states[c.solar]?.state) || 0);
     const grid = Math.round(parseFloat(this.hass.states[c.linky]?.state) || 0);
@@ -124,16 +123,16 @@ class EnergieCard extends LitElement {
     }).filter(d => d.state > 5).sort((a, b) => b.state - a.state);
 
     const flux = solar - totalCons;
-    const autarky = Math.min(Math.round((solar / (solar + (grid > 0 ? grid : 0) || 1)) * 100), 100) || 0;
-    const isCritical = (flux < -2000) || (bat < 15);
-    let cardStatusColor = isCritical ? "#ff4d4d" : (isNight ? "#7d5fff" : "#00f9f9");
+    // Calcul de sobriété : 100% si conso <= talon, descend si on consomme plus
+    const sobriety = Math.min(100, Math.max(0, 100 - ((totalCons - talon) / (talon * 4) * 100)));
+    const cardStatusColor = sobriety > 80 ? "#00ff88" : sobriety < 40 ? "#ff4d4d" : "#00f9f9";
 
     return html`
-      <ha-card class="${isCritical ? 'critical-pulse' : ''}" style="border-color: ${cardStatusColor}66">
+      <ha-card style="border-color: ${cardStatusColor}66">
         <div class="card-header">
-          <span class="title">${isNight ? '🌙 RESILIENCE' : (c.title || 'ENERGIE')}</span>
+          <span class="title">${isNight ? '🌙 MODE VEILLE' : (c.title || 'PILOTAGE ÉNERGIE')}</span>
           <div class="header-right">
-             ${isNight ? html`<span class="survival-tag">SURVIE : ${this._calculateSurvival(bat, c)}</span>` : ''}
+             <span class="sobriety-badge" style="color: ${cardStatusColor}">SOBRIÉTÉ: ${Math.round(sobriety)}%</span>
              <span class="badge ${flux >= 0 ? 'charge' : 'discharge'}">
                ${flux >= 0 ? '▲ CHARGE' : '▼ DÉCHARGE'}
              </span>
@@ -143,7 +142,7 @@ class EnergieCard extends LitElement {
         <div class="main-stats">
           <div class="stat-box ${isNight ? 'dimmed' : ''}">
             ${this._renderSparkline(this._history.solar, '#00ff8844')}
-            <ha-icon icon="mdi:solar-power" class="${solar > 10 ? 'flowing' : ''}"></ha-icon>
+            <ha-icon icon="mdi:solar-power"></ha-icon>
             <span class="val">${solar}W</span>
             <span class="label">SOLAIRE</span>
           </div>
@@ -157,15 +156,17 @@ class EnergieCard extends LitElement {
 
           <div class="stat-box">
             ${this._renderSparkline(this._history.grid, '#ff4d4d44')}
-            <ha-icon icon="mdi:transmission-tower" class="${grid > 10 ? 'flowing-red' : ''}"></ha-icon>
-            <span class="val" style="color: ${grid > 1000 ? '#ff9500' : '#fff'}">${grid}W</span>
-            <span class="label">RESEAU</span>
+            <ha-icon icon="mdi:home-lightning-bolt" style="color: ${totalCons > talon*2 ? '#ff4d4d' : '#fff'}"></ha-icon>
+            <span class="val">${totalCons}W</span>
+            <span class="label">CONSO TOTALE</span>
           </div>
         </div>
 
-        <div class="autarky-bar-container">
-           <div class="autarky-fill" style="width: ${autarky}%; background: ${cardStatusColor}"></div>
-           <span class="autarky-text">AUTOCONSOMMATION : ${autarky}%</span>
+        <div class="sobriety-bar">
+           <div class="sobriety-fill" style="width: ${sobriety}%; background: ${cardStatusColor}"></div>
+           <span class="sobriety-text">
+             ${totalCons <= talon ? 'TALON ATTEINT (PARFAIT)' : `SURPLUS: +${Math.max(0, totalCons - talon)}W`}
+           </span>
         </div>
 
         <div class="device-list">
@@ -187,75 +188,47 @@ class EnergieCard extends LitElement {
 
   static styles = css`
     ha-card { background: #0a0a0a; border-radius: 20px; padding: 18px; color: #fff; border: 2px solid transparent; transition: 0.5s; overflow: hidden; }
-    .critical-pulse { animation: alert-shadow 1.5s infinite; border-color: #ff4d4d !important; }
-    @keyframes alert-shadow { 0% { box-shadow: 0 0 0px #ff4d4d; } 50% { box-shadow: 0 0 15px #ff4d4d44; } 100% { box-shadow: 0 0 0px #ff4d4d; } }
     .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-    .header-right { display: flex; gap: 8px; align-items: center; }
-    .survival-tag { font-size: 9px; background: #7d5fff22; color: #7d5fff; border: 1px solid #7d5fff44; padding: 2px 6px; border-radius: 4px; font-weight: 900; }
-    .title { font-weight: 900; color: #555; text-transform: uppercase; font-size: 11px; }
+    .title { font-weight: 900; color: #555; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; }
+    .header-right { display: flex; gap: 10px; align-items: center; }
+    .sobriety-badge { font-size: 9px; font-weight: 900; letter-spacing: 0.5px; }
+    
     .main-stats { display: flex; gap: 10px; margin-bottom: 20px; }
-    .stat-box { background: #141414; padding: 12px 5px; border-radius: 12px; flex: 1; text-align: center; position: relative; overflow: hidden; display: flex; flex-direction: column; align-items: center; }
-    .sparkline { position: absolute; bottom: 0; left: 0; width: 100%; height: 30px; opacity: 0.4; }
+    .stat-box { background: #141414; padding: 12px 5px; border-radius: 12px; flex: 1; text-align: center; position: relative; overflow: hidden; display: flex; flex-direction: column; align-items: center; border: 1px solid #222; }
+    .sparkline { position: absolute; bottom: 0; left: 0; width: 100%; height: 30px; opacity: 0.4; pointer-events: none; }
     .dimmed { opacity: 0.3; filter: grayscale(1); }
     .val { font-weight: 900; font-size: 17px; margin: 4px 0; z-index: 1; }
-    .label { font-size: 8px; color: #888; text-transform: uppercase; z-index: 1; }
+    .label { font-size: 8px; color: #888; text-transform: uppercase; z-index: 1; font-weight: bold; }
     .label-time { font-size: 9px; color: #00f9f9; font-weight: bold; z-index: 1; }
-    .autarky-bar-container { height: 12px; background: #1a1a1a; border-radius: 6px; position: relative; overflow: hidden; margin-bottom: 20px; border: 1px solid #333; }
-    .autarky-fill { height: 100%; transition: width 2s ease; }
-    .autarky-text { position: absolute; width: 100%; text-align: center; top: 1px; font-size: 8px; font-weight: 900; }
+    
+    .sobriety-bar { height: 14px; background: #1a1a1a; border-radius: 6px; position: relative; overflow: hidden; margin-bottom: 20px; border: 1px solid #333; }
+    .sobriety-fill { height: 100%; transition: width 1.5s cubic-bezier(0.1, 0, 0.1, 1); }
+    .sobriety-text { position: absolute; width: 100%; text-align: center; top: 1px; font-size: 8px; font-weight: 900; text-shadow: 1px 1px 2px #000; line-height: 12px; }
 
-    /* CORRECTION ICI : ALIGNEMENT GAUCHE STRICT */
     .device-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(135px, 1fr)); gap: 10px; }
-    .device-item { 
-      background: #111; 
-      padding: 12px 10px; 
-      border-radius: 12px; 
-      display: flex; 
-      flex-direction: row; 
-      align-items: center; 
-      justify-content: flex-start; /* Force l'icône à gauche */
-      gap: 12px;
-    }
-    .icon-container {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0; /* Empêche l'icône de s'écraser */
-    }
-    .dev-info { 
-      display: flex; 
-      flex-direction: column; 
-      align-items: flex-start; /* Aligne le texte à gauche aussi */
-      min-width: 0; 
-      flex: 1;
-    }
-    .dev-val { font-weight: 900; font-size: 14px; line-height: 1.1; text-align: left; }
-    .dev-name { 
-      font-size: 9px; 
-      color: #777; 
-      text-transform: uppercase; 
-      font-weight: bold;
-      overflow: hidden; 
-      text-overflow: ellipsis; 
-      white-space: nowrap; 
-      margin-top: 2px;
-      text-align: left;
-    }
-
+    .device-item { background: #111; padding: 12px 10px; border-radius: 12px; display: flex; align-items: center; gap: 12px; border: 1px solid #222; transition: transform 0.2s; }
+    .device-item:hover { transform: translateY(-2px); background: #161616; }
+    .icon-container { flex-shrink: 0; display: flex; align-items: center; }
+    .dev-info { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+    .dev-val { font-weight: 900; font-size: 14px; line-height: 1.1; }
+    .dev-name { font-size: 9px; color: #777; text-transform: uppercase; font-weight: bold; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 2px; }
+    
     .badge { padding: 4px 8px; border-radius: 4px; font-size: 9px; font-weight: 900; }
-    .charge { background: #00ff8815; color: #00ff88; }
-    .discharge { background: #ff4d4d15; color: #ff4d4d; }
-    ha-icon { --mdc-icon-size: 22px; color: #00f9f9; }
+    .charge { background: #00ff8815; color: #00ff88; border: 1px solid #00ff8833; }
+    .discharge { background: #ff4d4d15; color: #ff4d4d; border: 1px solid #ff4d4d33; }
+    ha-icon { --mdc-icon-size: 22px; color: #00f9f9; z-index: 1; }
   `;
 }
 
+// Enregistrement des éléments
 customElements.define("energie-card-editor", EnergieCardEditor);
 customElements.define("energie-card", EnergieCard);
 
+// Ajout à la liste des cartes personnalisées
 window.customCards = window.customCards || [];
 window.customCards.push({
   type: "energie-card",
-  name: "Energie Card Correction Gauche",
-  description: "Correction finale de l'alignement des icônes.",
+  name: "Energie Card Ultimate (7kWh)",
+  description: "Dashboard complet avec suivi de talon (150W) et batterie hybride.",
   preview: true
 });
