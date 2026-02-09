@@ -23,6 +23,7 @@ class EnergieCardEditor extends LitElement {
     const schemas = [
       [ 
         { name: "title", label: "Titre", selector: { text: {} } },
+        { name: "main_font_size", label: "Taille Watts (px)", selector: { number: { min: 10, max: 40, mode: "slider" } } },
         { name: "solar", label: "Solaire (W)", selector: { entity: { domain: "sensor" } } },
         { name: "linky", label: "ZLinky SINSTS (W)", selector: { entity: { domain: "sensor" } } }
       ],
@@ -32,7 +33,7 @@ class EnergieCardEditor extends LitElement {
       ],
       [ 
         { name: "devices", label: "Appareils", selector: { entity: { multiple: true, domain: "sensor" } } },
-        { name: "custom_names", label: "Noms personnalisés", selector: { text: { multiline: true } } }
+        { name: "custom_names", label: "Noms personnalisés (Un par ligne)", selector: { text: { multiline: true } } }
       ]
     ];
     return html`
@@ -62,32 +63,26 @@ class EnergieCard extends LitElement {
 
   setConfig(config) { this.config = config; }
 
-  // Générateur de mini-graphique SVG
+  _getPowerColor(watts) {
+    if (watts < 100) return "#00ff88"; 
+    if (watts < 1000) return "#00f9f9"; 
+    if (watts < 2500) return "#ff9500"; 
+    return "#ff4d4d"; 
+  }
+
   _renderSparkline(data, color) {
     if (!data || data.length < 2) return html``;
     const min = Math.min(...data);
     const max = Math.max(...data) || 1;
     const range = max - min || 1;
-    const width = 100;
-    const height = 30;
-    
-    const points = data.map((d, i) => {
-      const x = (i / (data.length - 1)) * width;
-      const y = height - ((d - min) / range) * height;
-      return `${x},${y}`;
-    }).join(' ');
-
-    return html`
-      <svg class="sparkline" viewBox="0 0 100 30" preserveAspectRatio="none">
-        <polyline fill="none" stroke="${color}" stroke-width="2" points="${points}" />
-      </svg>
-    `;
+    const points = data.map((d, i) => `${(i / (data.length - 1)) * 100},${30 - ((d - min) / range) * 30}`).join(' ');
+    return html`<svg class="sparkline" viewBox="0 0 100 30" preserveAspectRatio="none"><polyline fill="none" stroke="${color}" stroke-width="2" points="${points}" /></svg>`;
   }
 
   _updateHistory(type, value) {
-    const now = Date.now();
+    if (!this._history[type]) this._history[type] = [];
     this._history[type].push(value);
-    if (this._history[type].length > 30) this._history[type].shift(); // Garde les 30 derniers points
+    if (this._history[type].length > 40) this._history[type].shift();
   }
 
   render() {
@@ -98,7 +93,6 @@ class EnergieCard extends LitElement {
     const grid = Math.round(parseFloat(this.hass.states[c.linky]?.state) || 0);
     const bat = Math.round(parseFloat(this.hass.states[c.battery1]?.state) || 0);
 
-    // Mise à jour silencieuse de l'historique
     this._updateHistory('solar', solar);
     this._updateHistory('grid', grid);
     this._updateHistory('battery', bat);
@@ -109,7 +103,11 @@ class EnergieCard extends LitElement {
       const s = this.hass.states[id];
       const val = s ? parseFloat(s.state) || 0 : 0;
       totalCons += val;
-      return { state: val, name: customNamesArr[index] || (s?.attributes.friendly_name || id.split('.')[1]) };
+      return { 
+        state: val, 
+        stateObj: s, 
+        name: customNamesArr[index] || (s?.attributes.friendly_name || id.split('.')[1])
+      };
     }).filter(d => d.state > 5).sort((a, b) => b.state - a.state);
 
     const batPowerFlux = solar - totalCons;
@@ -119,7 +117,7 @@ class EnergieCard extends LitElement {
     return html`
       <ha-card style="border-color: ${cardStatusColor}66">
         <div class="card-header">
-          <span class="title">${c.title || 'ENERGIE LIVE'}</span>
+          <span class="title">${c.title || 'ENERGIE ULTIMATE'}</span>
           <span class="badge ${batPowerFlux >= 0 ? 'charge' : 'discharge'}">
             ${batPowerFlux >= 0 ? '▲ CHARGE' : '▼ DÉCHARGE'}
           </span>
@@ -127,23 +125,23 @@ class EnergieCard extends LitElement {
 
         <div class="main-stats">
           <div class="stat-box">
-            ${this._renderSparkline(this._history.solar, '#00ff8866')}
-            <ha-icon icon="mdi:solar-power"></ha-icon>
-            <span class="val">${solar}W</span>
+            ${this._renderSparkline(this._history.solar, '#00ff8844')}
+            <ha-icon icon="mdi:solar-power" class="${solar > 10 ? 'flowing' : ''}"></ha-icon>
+            <span class="val" style="font-size: ${c.main_font_size || 18}px">${solar}W</span>
             <span class="label">SOLAIRE</span>
           </div>
 
           <div class="stat-box">
-            ${this._renderSparkline(this._history.battery, '#00f9f966')}
+            ${this._renderSparkline(this._history.battery, '#00f9f944')}
             <ha-icon icon="mdi:battery-high"></ha-icon>
-            <span class="val">${bat}%</span>
+            <span class="val" style="font-size: ${c.main_font_size || 18}px">${bat}%</span>
             <span class="label">BATTERIE</span>
           </div>
 
           <div class="stat-box">
-            ${this._renderSparkline(this._history.grid, '#ff4d4d66')}
-            <ha-icon icon="mdi:transmission-tower"></ha-icon>
-            <span class="val" style="color: ${grid > 100 ? '#ff4d4d' : '#fff'}">${grid}W</span>
+            ${this._renderSparkline(this._history.grid, '#ff4d4d44')}
+            <ha-icon icon="mdi:transmission-tower" class="${grid > 10 ? 'flowing-red' : ''}"></ha-icon>
+            <span class="val" style="color: ${this._getPowerColor(grid)}; font-size: ${c.main_font_size || 18}px">${grid}W</span>
             <span class="label">RÉSEAU</span>
           </div>
         </div>
@@ -154,14 +152,18 @@ class EnergieCard extends LitElement {
         </div>
 
         <div class="device-list">
-          ${activeDevices.map(d => html`
-            <div class="device-item">
-              <div class="dev-info">
-                 <span class="dev-val">${Math.round(d.state)}W</span>
-                 <span class="dev-name">${d.name}</span>
+          ${activeDevices.map(d => {
+            const color = this._getPowerColor(d.state);
+            return html`
+              <div class="device-item" style="border-bottom-color: ${color}aa">
+                <ha-icon icon="${d.stateObj?.attributes.icon || 'mdi:flash'}" style="color: ${color}"></ha-icon>
+                <div class="dev-info">
+                   <span class="dev-val" style="color: ${color}">${Math.round(d.state)}W</span>
+                   <span class="dev-name">${d.name}</span>
+                </div>
               </div>
-            </div>
-          `)}
+            `;
+          })}
         </div>
       </ha-card>
     `;
@@ -169,27 +171,34 @@ class EnergieCard extends LitElement {
 
   static styles = css`
     ha-card { background: #0d0d0d; border-radius: 16px; padding: 18px; color: #fff; border: 2px solid transparent; overflow: hidden; }
-    .card-header { display: flex; justify-content: space-between; margin-bottom: 20px; }
-    .title { font-weight: 900; color: #555; text-transform: uppercase; font-size: 12px; }
-    .badge { padding: 4px 8px; border-radius: 4px; font-size: 9px; font-weight: 900; }
-    .charge { background: #00ff8822; color: #00ff88; }
-    .discharge { background: #ff4d4d22; color: #ff4d4d; }
+    .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .title { font-weight: 900; color: #555; text-transform: uppercase; font-size: 12px; letter-spacing: 1px; }
+    .badge { padding: 4px 10px; border-radius: 6px; font-size: 10px; font-weight: 900; }
+    .charge { background: #00ff8822; color: #00ff88; border: 1px solid #00ff88; }
+    .discharge { background: #ff4d4d22; color: #ff4d4d; border: 1px solid #ff4d4d; }
 
-    .main-stats { display: flex; gap: 10px; margin-bottom: 20px; }
-    .stat-box { background: #1a1a1a; padding: 10px; border-radius: 12px; flex: 1; text-align: center; position: relative; overflow: hidden; }
-    .sparkline { position: absolute; bottom: 0; left: 0; width: 100%; height: 30px; z-index: 0; opacity: 0.5; }
+    .main-stats { display: flex; gap: 10px; margin-bottom: 25px; }
+    .stat-box { background: #1a1a1a; padding: 15px 5px; border-radius: 12px; flex: 1; text-align: center; position: relative; overflow: hidden; display: flex; flex-direction: column; align-items: center; }
+    .sparkline { position: absolute; bottom: 0; left: 0; width: 100%; height: 35px; z-index: 0; opacity: 0.6; pointer-events: none; }
     ha-icon, .val, .label { position: relative; z-index: 1; }
-    .val { font-weight: 900; display: block; font-size: 16px; margin: 4px 0; }
-    .label { font-size: 8px; opacity: 0.5; }
+    .val { font-weight: 900; margin: 5px 0; }
+    .label { font-size: 8px; opacity: 0.5; font-weight: bold; }
 
-    .autarky-bar-container { height: 18px; background: #1a1a1a; border-radius: 6px; position: relative; overflow: hidden; margin-bottom: 20px; }
-    .autarky-fill { height: 100%; transition: width 1s; opacity: 0.6; }
-    .autarky-text { position: absolute; width: 100%; text-align: center; top: 3px; font-size: 9px; font-weight: 900; }
+    .autarky-bar-container { height: 20px; background: #1a1a1a; border-radius: 8px; position: relative; overflow: hidden; margin-bottom: 25px; border: 1px solid #333; }
+    .autarky-fill { height: 100%; transition: width 1s; opacity: 0.7; }
+    .autarky-text { position: absolute; width: 100%; text-align: center; top: 3px; font-size: 10px; font-weight: 900; }
 
-    .device-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; }
-    .device-item { background: #151515; padding: 10px; border-radius: 10px; border-left: 3px solid #00f9f9; }
-    .dev-val { font-weight: 900; display: block; color: #00f9f9; }
-    .dev-name { font-size: 10px; opacity: 0.7; }
+    .device-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
+    .device-item { background: #151515; padding: 12px 14px; border-radius: 12px; display: flex; align-items: center; gap: 10px; border-bottom: 3px solid transparent; min-width: 0; }
+    .dev-info { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+    .dev-val { font-weight: 900; font-size: 13px; }
+    .dev-name { opacity: 0.7; font-size: 11px; word-break: break-word; line-height: 1.1; }
+
+    .flowing { animation: glow-green 2s infinite; }
+    .flowing-red { animation: glow-red 2s infinite; }
+    @keyframes glow-green { 0%, 100% { color: #fff; } 50% { color: #00ff88; filter: drop-shadow(0 0 5px #00ff88); } }
+    @keyframes glow-red { 0%, 100% { color: #fff; } 50% { color: #ff4d4d; filter: drop-shadow(0 0 5px #ff4d4d); } }
+    ha-icon { --mdc-icon-size: 24px; color: #00f9f9; flex-shrink: 0; }
   `;
 }
 
