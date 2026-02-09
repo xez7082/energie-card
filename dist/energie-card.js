@@ -28,7 +28,7 @@ class EnergieCardEditor extends LitElement {
         { name: "linky", label: "Réseau SINSTS (W)", selector: { entity: { domain: "sensor" } } }
       ],
       [ 
-        { name: "bat_cap", label: "Capacité Totale Batterie (Wh)", selector: { number: { min: 1000, max: 30000, step: 100 } } },
+        { name: "nb_modules", label: "Nombre de modules IBC (5.12kWh)", selector: { number: { min: 1, max: 6, mode: "box" } } },
         { name: "bat_font_size", label: "Taille % Batterie (px)", selector: { number: { min: 10, max: 40, mode: "slider" } } },
         { name: "battery1", label: "Batterie 1 (%)", selector: { entity: { domain: "sensor" } } },
         { name: "battery2", label: "Batterie 2 (%)", selector: { entity: { domain: "sensor" } } },
@@ -69,7 +69,8 @@ class EnergieCard extends LitElement {
     return "#ff4d4d"; 
   }
 
-  _calculateTime(soc, power, capacity) {
+  _calculateTime(soc, power, nbModules) {
+    const capacity = (nbModules || 1) * 5120;
     if (!power || Math.abs(power) < 15) return "--h";
     const whRemaining = (soc / 100) * capacity;
     const whToFull = ((100 - soc) / 100) * capacity;
@@ -110,7 +111,7 @@ class EnergieCard extends LitElement {
     }).filter(d => d.state > 5).sort((a, b) => b.state - a.state);
 
     const batPowerFlux = solar - totalCons;
-    const batTime = this._calculateTime(avg_soc, batPowerFlux, c.bat_cap || 5120);
+    const batTime = this._calculateTime(avg_soc, batPowerFlux, c.nb_modules);
     const autarky = Math.min(Math.round((solar / (solar + (grid > 0 ? grid : 0) || 1)) * 100), 100) || 0;
     let cardStatusColor = autarky > 90 ? "#00ff88" : (autarky < 20 ? "#ff4d4d" : "#00f9f9");
 
@@ -188,42 +189,31 @@ class EnergieCard extends LitElement {
     .autarky-fill { height: 100%; transition: width 2s ease-in-out; opacity: 0.6; }
     .autarky-text { position: absolute; width: 100%; text-align: center; top: 3px; font-size: 10px; font-weight: 900; color: #fff; }
 
-    /* GRILLE ADAPTATIVE POUR LES APPAREILS */
     .device-list { 
       display: grid; 
-      grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); 
-      gap: 8px; 
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); 
+      gap: 12px; 
     }
     .device-item { 
       background: #151515; 
-      padding: 8px 10px; 
-      border-radius: 10px; 
+      padding: 12px 14px; 
+      border-radius: 12px; 
       display: flex; 
       align-items: center; 
-      gap: 8px; 
+      gap: 10px; 
       border-bottom: 3px solid transparent;
-      min-width: 0; /* Important pour le texte long */
+      min-width: 0;
     }
-    .dev-info { 
-      display: flex; 
-      flex-direction: column; 
-      min-width: 0; /* Permet au texte de se compresser ou d'aller à la ligne */
-      flex: 1;
-    }
+    .dev-info { display: flex; flex-direction: column; min-width: 0; flex: 1; }
     .dev-val { font-weight: 900; }
-    .dev-name { 
-      opacity: 0.7; 
-      line-height: 1.1;
-      word-break: break-word; /* Force le retour à la ligne si le mot est trop long */
-      overflow-wrap: anywhere;
-    }
+    .dev-name { opacity: 0.7; line-height: 1.2; word-break: break-word; overflow-wrap: anywhere; }
 
     .flowing { animation: glow-green 2s infinite; }
     .flowing-red { animation: glow-red 2s infinite; }
     @keyframes glow-green { 0%, 100% { color: #fff; } 50% { color: #00ff88; filter: drop-shadow(0 0 5px #00ff88); } }
     @keyframes glow-red { 0%, 100% { color: #fff; } 50% { color: #ff4d4d; filter: drop-shadow(0 0 5px #ff4d4d); } }
     
-    ha-icon { --mdc-icon-size: 22px; color: #00f9f9; flex-shrink: 0; }
+    ha-icon { --mdc-icon-size: 24px; color: #00f9f9; flex-shrink: 0; }
   `;
 }
 
@@ -234,6 +224,6 @@ window.customCards = window.customCards || [];
 window.customCards.push({
   type: "energie-card",
   name: "Energie Card Ultimate",
-  description: "Dashboard avec grille d'appareils adaptative.",
+  description: "Dashboard pro avec modules IBC et cartes larges.",
   preview: true
 });
