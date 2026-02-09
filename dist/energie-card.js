@@ -96,6 +96,11 @@ class EnergieCard extends LitElement {
     const total_cons = solar + (grid > 0 ? grid : 0);
     const autarky = Math.min(Math.round((solar / total_cons) * 100), 100) || 0;
 
+    // Détermination de la couleur de l'autonomie
+    let autarkyColor = "#00f9f9"; // Cyan par défaut
+    if (autarky > 80) autarkyColor = "#00ff88"; // Vert si élevé
+    if (autarky < 20) autarkyColor = "#ff4d4d"; // Rouge si faible
+
     const customNamesArr = c.custom_names ? c.custom_names.split(/,|\n/).map(n => n.trim()) : [];
 
     let totalDevicesPower = 0;
@@ -136,17 +141,17 @@ class EnergieCard extends LitElement {
           <span class="title" style="font-size: ${c.title_size || 14}px">${c.title || 'ENERGIE-CARD'}</span>
           <div class="header-badges">
             <span class="badge info" style="font-size: ${c.badge_size || 9}px">CONSO: ${Math.round(totalDevicesPower)}W</span>
-            <span class="badge autarky" style="font-size: ${c.badge_size || 9}px">${autarky}% AUTONOME</span>
+            <span class="badge autarky" style="font-size: ${c.badge_size || 9}px; border-color: ${autarkyColor}">${autarky}% AUTONOME</span>
           </div>
         </div>
 
         <div class="progress-wrapper">
-          <div class="progress-label" style="left: ${autarky}%">
-            <span>${autarky}%</span>
-            <ha-icon icon="mdi:menu-down"></ha-icon>
+          <div class="progress-label" style="left: ${autarky}%; color: ${autarkyColor}">
+            <span style="border-color: ${autarkyColor}">L'autonomie est de : ${autarky}%</span>
+            <ha-icon icon="mdi:menu-down" style="color: ${autarkyColor}"></ha-icon>
           </div>
           <div class="progress-container">
-            <div class="progress-bar" style="width: ${autarky}%"></div>
+            <div class="progress-bar" style="width: ${autarky}%; background: linear-gradient(90deg, ${autarkyColor}, #008f8f); box-shadow: 0 0 10px ${autarkyColor}"></div>
           </div>
         </div>
 
@@ -195,7 +200,6 @@ class EnergieCard extends LitElement {
   static styles = css`
     ha-card { background: rgba(13, 13, 13, 0.95); backdrop-filter: blur(10px); border: 1px solid rgba(0, 249, 249, 0.3); border-radius: 20px; padding: 18px; color: #fff; position: relative; overflow: hidden; }
     
-    /* --- STYLE DU POPUP D'AIDE --- */
     .help-icon { position: absolute; top: 15px; right: 15px; cursor: pointer; opacity: 0.5; transition: 0.3s; z-index: 10; }
     .help-icon:hover { opacity: 1; color: #00f9f9; }
     .help-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 100; display: flex; align-items: center; justify-content: center; animation: fadeIn 0.3s ease; }
@@ -205,32 +209,42 @@ class EnergieCard extends LitElement {
     .close-btn { background: #00f9f9; border: none; padding: 8px 15px; border-radius: 5px; font-weight: bold; cursor: pointer; margin-top: 15px; width: 100%; }
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
-    /* --- NOUVEAU STYLE BARRE & INDICATEUR --- */
-    .progress-wrapper { position: relative; margin-top: 25px; margin-bottom: 25px; }
+    .progress-wrapper { position: relative; margin-top: 38px; margin-bottom: 28px; }
     .progress-label { 
       position: absolute; 
-      top: -24px; 
+      top: -28px; 
       transform: translateX(-50%); 
-      transition: left 1.5s ease-in-out; 
+      transition: left 1.5s ease-in-out, color 0.5s ease; 
       display: flex; 
       flex-direction: column; 
       align-items: center; 
-      color: #00f9f9;
-      font-weight: bold;
       z-index: 2;
+      width: max-content;
     }
-    .progress-label span { font-size: 10px; background: rgba(0,0,0,0.5); padding: 1px 4px; border-radius: 4px; }
-    .progress-label ha-icon { --mdc-icon-size: 16px; margin-top: -5px; }
+    .progress-label span { 
+      font-size: 10px; 
+      background: rgba(0, 0, 0, 0.85); 
+      padding: 3px 10px; 
+      border-radius: 6px; 
+      white-space: nowrap;
+      border: 1px solid transparent;
+      font-weight: bold;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.7);
+    }
+    .progress-label ha-icon { 
+      --mdc-icon-size: 20px; 
+      margin-top: -7px; 
+    }
     
     .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px; padding-right: 30px; }
     .title { font-weight: 800; color: #00f9f9; letter-spacing: 1px; }
     .header-badges { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-    .badge { padding: 5px 14px; border-radius: 20px; font-weight: bold; border: 1px solid rgba(255,255,255,0.1); white-space: nowrap; }
-    .badge.autarky { background: rgba(0, 249, 249, 0.1); color: #00f9f9; border-color: rgba(0, 249, 249, 0.4); }
+    .badge { padding: 5px 14px; border-radius: 20px; font-weight: bold; border: 1px solid rgba(255,255,255,0.1); white-space: nowrap; transition: border-color 0.5s ease; }
+    .badge.autarky { background: rgba(0, 249, 249, 0.1); color: #00f9f9; }
     .badge.info { background: rgba(255, 255, 255, 0.05); color: #fff; }
     
-    .progress-container { height: 8px; background: rgba(255,255,255,0.05); border-radius: 10px; overflow: hidden; border: 1px solid rgba(0, 249, 249, 0.1); }
-    .progress-bar { height: 100%; background: linear-gradient(90deg, #00f9f9, #008f8f); box-shadow: 0 0 10px #00f9f9; transition: width 1.5s ease-in-out; }
+    .progress-container { height: 10px; background: rgba(255,255,255,0.05); border-radius: 12px; overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.05); }
+    .progress-bar { height: 100%; transition: width 1.5s ease-in-out, background 0.5s ease; }
     
     .main-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; text-align: center; }
     .stat-box { background: rgba(255,255,255,0.02); padding: 12px 5px; border-radius: 15px; border: 1px solid rgba(255,255,255,0.05); }
@@ -255,6 +269,6 @@ window.customCards = window.customCards || [];
 window.customCards.push({
   type: "energie-card",
   name: "Energie Card Ultimate",
-  description: "Dashboard avec barre d'autonomie dynamique.",
+  description: "Dashboard avec alerte couleur d'autonomie.",
   preview: true
 });
