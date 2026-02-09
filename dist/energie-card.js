@@ -96,10 +96,12 @@ class EnergieCard extends LitElement {
     const total_cons = solar + (grid > 0 ? grid : 0);
     const autarky = Math.min(Math.round((solar / total_cons) * 100), 100) || 0;
 
-    // Détermination de la couleur de l'autonomie
-    let autarkyColor = "#00f9f9"; // Cyan par défaut
-    if (autarky > 80) autarkyColor = "#00ff88"; // Vert si élevé
-    if (autarky < 20) autarkyColor = "#ff4d4d"; // Rouge si faible
+    // Logique de couleur et d'alerte
+    let autarkyColor = "#00f9f9";
+    let isCritical = false;
+    if (autarky > 80) autarkyColor = "#00ff88";
+    if (autarky < 20) autarkyColor = "#ff4d4d";
+    if (autarky < 5) isCritical = true; // Alerte critique sous 5%
 
     const customNamesArr = c.custom_names ? c.custom_names.split(/,|\n/).map(n => n.trim()) : [];
 
@@ -128,9 +130,8 @@ class EnergieCard extends LitElement {
           <div class="help-overlay" @click=${this._toggleHelp}>
             <div class="help-content">
                <h3>⚡ Aide Energie Card</h3>
-               <img src="/local/elec.png" style="width:100%; border-radius:10px; margin-bottom:10px; border:1px solid #00f9f9;">
                <p><b>Tri :</b> Automatique par puissance décroissante.</p>
-               <p><b>Seuil :</b> Les appareils < 5W sont masqués.</p>
+               <p><b>Alerte :</b> L'étiquette d'autonomie clignote sous 5%.</p>
                <p><b>Configuration :</b> Les noms se règlent par ligne dans l'éditeur.</p>
                <button class="close-btn">FERMER</button>
             </div>
@@ -146,7 +147,7 @@ class EnergieCard extends LitElement {
         </div>
 
         <div class="progress-wrapper">
-          <div class="progress-label" style="left: ${autarky}%; color: ${autarkyColor}">
+          <div class="progress-label ${isCritical ? 'critical-blink' : ''}" style="left: ${autarky}%; color: ${autarkyColor}">
             <span style="border-color: ${autarkyColor}">L'autonomie est de : ${autarky}%</span>
             <ha-icon icon="mdi:menu-down" style="color: ${autarkyColor}"></ha-icon>
           </div>
@@ -201,13 +202,9 @@ class EnergieCard extends LitElement {
     ha-card { background: rgba(13, 13, 13, 0.95); backdrop-filter: blur(10px); border: 1px solid rgba(0, 249, 249, 0.3); border-radius: 20px; padding: 18px; color: #fff; position: relative; overflow: hidden; }
     
     .help-icon { position: absolute; top: 15px; right: 15px; cursor: pointer; opacity: 0.5; transition: 0.3s; z-index: 10; }
-    .help-icon:hover { opacity: 1; color: #00f9f9; }
-    .help-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 100; display: flex; align-items: center; justify-content: center; animation: fadeIn 0.3s ease; }
+    .help-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 100; display: flex; align-items: center; justify-content: center; }
     .help-content { padding: 20px; text-align: left; max-width: 80%; }
-    .help-content h3 { color: #00f9f9; margin-top: 0; border-bottom: 1px solid #00f9f9; padding-bottom: 10px; }
-    .help-content p { font-size: 12px; margin: 8px 0; line-height: 1.4; }
     .close-btn { background: #00f9f9; border: none; padding: 8px 15px; border-radius: 5px; font-weight: bold; cursor: pointer; margin-top: 15px; width: 100%; }
-    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
     .progress-wrapper { position: relative; margin-top: 38px; margin-bottom: 28px; }
     .progress-label { 
@@ -229,33 +226,30 @@ class EnergieCard extends LitElement {
       white-space: nowrap;
       border: 1px solid transparent;
       font-weight: bold;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.7);
-    }
-    .progress-label ha-icon { 
-      --mdc-icon-size: 20px; 
-      margin-top: -7px; 
     }
     
+    /* Animation de clignotement critique */
+    .critical-blink { animation: alert-blink 1s infinite alternate; }
+    @keyframes alert-blink {
+      from { opacity: 1; transform: translateX(-50%) scale(1); }
+      to { opacity: 0.5; transform: translateX(-50%) scale(1.05); }
+    }
+
     .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px; padding-right: 30px; }
     .title { font-weight: 800; color: #00f9f9; letter-spacing: 1px; }
-    .header-badges { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-    .badge { padding: 5px 14px; border-radius: 20px; font-weight: bold; border: 1px solid rgba(255,255,255,0.1); white-space: nowrap; transition: border-color 0.5s ease; }
+    .badge { padding: 5px 14px; border-radius: 20px; font-weight: bold; border: 1px solid rgba(255,255,255,0.1); white-space: nowrap; }
     .badge.autarky { background: rgba(0, 249, 249, 0.1); color: #00f9f9; }
-    .badge.info { background: rgba(255, 255, 255, 0.05); color: #fff; }
     
-    .progress-container { height: 10px; background: rgba(255,255,255,0.05); border-radius: 12px; overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.05); }
+    .progress-container { height: 10px; background: rgba(255,255,255,0.05); border-radius: 12px; overflow: hidden; }
     .progress-bar { height: 100%; transition: width 1.5s ease-in-out, background 0.5s ease; }
     
     .main-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; text-align: center; }
     .stat-box { background: rgba(255,255,255,0.02); padding: 12px 5px; border-radius: 15px; border: 1px solid rgba(255,255,255,0.05); }
     .val { display: block; font-weight: bold; font-size: 16px; margin: 4px 0; }
     .label { font-size: 8px; opacity: 0.4; font-weight: bold; text-transform: uppercase; }
-    .bat-mini { font-size: 7px; color: #00f9f9; opacity: 0.7; }
+    .bat-mini { font-size: 7px; color: #00f9f9; }
     .device-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 12px; margin-top: 22px; }
-    .device-item { background: rgba(255,255,255,0.03); padding: 12px 8px; border-radius: 14px; border: 1px solid transparent; display: flex; flex-direction: column; align-items: center; gap: 6px; transition: all 0.3s ease; min-height: 85px; justify-content: center; }
-    .dev-info { display: flex; flex-direction: column; align-items: center; width: 100%; text-align: center; }
-    .dev-val { font-weight: bold; }
-    .dev-name { opacity: 0.8; line-height: 1.1; word-break: break-word; display: block; margin-top: 2px; }
+    .device-item { background: rgba(255,255,255,0.03); padding: 12px 8px; border-radius: 14px; border: 1px solid transparent; display: flex; flex-direction: column; align-items: center; gap: 6px; min-height: 85px; justify-content: center; }
     .active-icon { animation: pulse 2.5s infinite ease-in-out; }
     @keyframes pulse { 0%, 100% { transform: scale(1); opacity: 0.7; } 50% { transform: scale(1.1); opacity: 1; } }
     ha-icon { color: #00f9f9; }
@@ -269,6 +263,6 @@ window.customCards = window.customCards || [];
 window.customCards.push({
   type: "energie-card",
   name: "Energie Card Ultimate",
-  description: "Dashboard avec alerte couleur d'autonomie.",
+  description: "Dashboard complet avec alertes d'autonomie.",
   preview: true
 });
