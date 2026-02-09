@@ -24,6 +24,7 @@ class EnergieCardEditor extends LitElement {
       [ 
         { name: "title", label: "Titre du Dashboard", selector: { text: {} } },
         { name: "title_size", label: "Taille du Titre (px)", selector: { number: { min: 10, max: 40, mode: "slider" } } },
+        { name: "main_font_size", label: "Taille Solaire/Réseau (px)", selector: { number: { min: 10, max: 40, mode: "slider" } } },
         { name: "badge_size", label: "Taille Consos/Autonomie (px)", selector: { number: { min: 8, max: 30, mode: "slider" } } },
         { name: "solar", label: "Production Marstek (W)", selector: { entity: { domain: "sensor" } } },
         { name: "solar_name", label: "Nom Solaire", selector: { text: {} } },
@@ -106,6 +107,9 @@ class EnergieCard extends LitElement {
     if (autarky < 20) autarkyColor = "#ff4d4d";
     if (autarky < 5) isCritical = true;
 
+    const mainFontSize = c.main_font_size || 16;
+    const batFontSize = c.bat_font_size || 16;
+
     const customNamesArr = c.custom_names ? c.custom_names.split(/,|\n/).map(n => n.trim()) : [];
     let totalDevicesPower = 0;
     const activeDevices = (c.devices || []).map((id, index) => {
@@ -127,7 +131,7 @@ class EnergieCard extends LitElement {
           <div class="help-overlay" @click=${this._toggleHelp}>
             <div class="help-content">
                <h3>⚡ Aide Energie Card</h3>
-               <p><b>Réglages :</b> Allez dans l'onglet "Batteries" pour ajuster la taille du texte central.</p>
+               <p><b>Visuel :</b> Réglez la taille des Watts et des % depuis les onglets Sources et Batteries.</p>
                <button class="close-btn">FERMER</button>
             </div>
           </div>
@@ -153,15 +157,15 @@ class EnergieCard extends LitElement {
 
         <div class="main-stats">
           <div class="stat-box solar">
-            <ha-icon icon="mdi:solar-power"></ha-icon>
-            <span class="val">${solar}W</span>
+            <ha-icon icon="mdi:solar-power" style="--mdc-icon-size: ${mainFontSize + 4}px"></ha-icon>
+            <span class="val" style="font-size: ${mainFontSize}px">${solar}W</span>
             <span class="label">${c.solar_name || 'SOLAIRE'}</span>
           </div>
 
           ${hasBattery ? html`
             <div class="stat-box battery">
-              <ha-icon icon="mdi:battery-high" style="--mdc-icon-size: ${(c.bat_font_size || 16) + 4}px"></ha-icon>
-              <span class="val" style="font-size: ${c.bat_font_size || 16}px">${avg_bat}%</span>
+              <ha-icon icon="mdi:battery-high" style="--mdc-icon-size: ${batFontSize + 4}px"></ha-icon>
+              <span class="val" style="font-size: ${batFontSize}px">${avg_bat}%</span>
               <div class="bat-mini">
                  ${b1 !== null ? html`${c.bat1_name || 'B1'}:${b1}% ` : ''}
                  ${b2 !== null ? html`| ${c.bat2_name || 'B2'}:${b2}% ` : ''}
@@ -171,8 +175,8 @@ class EnergieCard extends LitElement {
           ` : ''}
 
           <div class="stat-box grid">
-            <ha-icon icon="mdi:transmission-tower"></ha-icon>
-            <span class="val" style="color: ${this._getPowerColor(grid)}">${grid}W</span>
+            <ha-icon icon="mdi:transmission-tower" style="--mdc-icon-size: ${mainFontSize + 4}px"></ha-icon>
+            <span class="val" style="color: ${this._getPowerColor(grid)}; font-size: ${mainFontSize}px">${grid}W</span>
             <span class="label">${c.linky_name || 'RÉSEAU'}</span>
           </div>
         </div>
@@ -254,6 +258,6 @@ window.customCards = window.customCards || [];
 window.customCards.push({
   type: "energie-card",
   name: "Energie Card Ultimate",
-  description: "Dashboard intelligent avec texte batterie réglable.",
+  description: "Dashboard avec toutes les tailles de texte ajustables.",
   preview: true
 });
