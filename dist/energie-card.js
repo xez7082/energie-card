@@ -124,7 +124,6 @@ class EnergieCard extends LitElement {
             <div class="help-content">
                <h3>⚡ Aide Energie Card</h3>
                <img src="/local/elec.png" style="width:100%; border-radius:10px; margin-bottom:10px; border:1px solid #00f9f9;">
-               
                <p><b>Tri :</b> Automatique par puissance décroissante.</p>
                <p><b>Seuil :</b> Les appareils < 5W sont masqués.</p>
                <p><b>Configuration :</b> Les noms se règlent par ligne dans l'éditeur.</p>
@@ -140,7 +139,16 @@ class EnergieCard extends LitElement {
             <span class="badge autarky" style="font-size: ${c.badge_size || 9}px">${autarky}% AUTONOME</span>
           </div>
         </div>
-        <div class="progress-container"><div class="progress-bar" style="width: ${autarky}%"></div></div>
+
+        <div class="progress-wrapper">
+          <div class="progress-label" style="left: ${autarky}%">
+            <span>${autarky}%</span>
+            <ha-icon icon="mdi:menu-down"></ha-icon>
+          </div>
+          <div class="progress-container">
+            <div class="progress-bar" style="width: ${autarky}%"></div>
+          </div>
+        </div>
 
         <div class="main-stats">
           <div class="stat-box solar">
@@ -196,16 +204,34 @@ class EnergieCard extends LitElement {
     .help-content p { font-size: 12px; margin: 8px 0; line-height: 1.4; }
     .close-btn { background: #00f9f9; border: none; padding: 8px 15px; border-radius: 5px; font-weight: bold; cursor: pointer; margin-top: 15px; width: 100%; }
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-    /* ----------------------------- */
 
+    /* --- NOUVEAU STYLE BARRE & INDICATEUR --- */
+    .progress-wrapper { position: relative; margin-top: 25px; margin-bottom: 25px; }
+    .progress-label { 
+      position: absolute; 
+      top: -24px; 
+      transform: translateX(-50%); 
+      transition: left 1.5s ease-in-out; 
+      display: flex; 
+      flex-direction: column; 
+      align-items: center; 
+      color: #00f9f9;
+      font-weight: bold;
+      z-index: 2;
+    }
+    .progress-label span { font-size: 10px; background: rgba(0,0,0,0.5); padding: 1px 4px; border-radius: 4px; }
+    .progress-label ha-icon { --mdc-icon-size: 16px; margin-top: -5px; }
+    
     .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px; padding-right: 30px; }
     .title { font-weight: 800; color: #00f9f9; letter-spacing: 1px; }
     .header-badges { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
     .badge { padding: 5px 14px; border-radius: 20px; font-weight: bold; border: 1px solid rgba(255,255,255,0.1); white-space: nowrap; }
     .badge.autarky { background: rgba(0, 249, 249, 0.1); color: #00f9f9; border-color: rgba(0, 249, 249, 0.4); }
     .badge.info { background: rgba(255, 255, 255, 0.05); color: #fff; }
-    .progress-container { height: 6px; background: rgba(255,255,255,0.05); border-radius: 10px; margin-bottom: 22px; overflow: hidden; }
+    
+    .progress-container { height: 8px; background: rgba(255,255,255,0.05); border-radius: 10px; overflow: hidden; border: 1px solid rgba(0, 249, 249, 0.1); }
     .progress-bar { height: 100%; background: linear-gradient(90deg, #00f9f9, #008f8f); box-shadow: 0 0 10px #00f9f9; transition: width 1.5s ease-in-out; }
+    
     .main-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; text-align: center; }
     .stat-box { background: rgba(255,255,255,0.02); padding: 12px 5px; border-radius: 15px; border: 1px solid rgba(255,255,255,0.05); }
     .val { display: block; font-weight: bold; font-size: 16px; margin: 4px 0; }
@@ -229,6 +255,6 @@ window.customCards = window.customCards || [];
 window.customCards.push({
   type: "energie-card",
   name: "Energie Card Ultimate",
-  description: "Dashboard 60 appareils avec aide intégrée.",
+  description: "Dashboard avec barre d'autonomie dynamique.",
   preview: true
 });
