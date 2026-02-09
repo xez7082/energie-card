@@ -36,7 +36,8 @@ class EnergieCardEditor extends LitElement {
       ],
       [ 
         { name: "devices", label: "Appareils", selector: { entity: { multiple: true, domain: "sensor" } } },
-        { name: "custom_names", label: "Noms (Un par ligne)", selector: { text: { multiline: true } } }
+        { name: "custom_names", label: "Noms (Un par ligne)", selector: { text: { multiline: true } } },
+        { name: "font_size", label: "Taille texte Appareils (px)", selector: { number: { min: 8, max: 20, mode: "slider" } } }
       ]
     ];
     return html`
@@ -69,14 +70,13 @@ class EnergieCard extends LitElement {
   }
 
   _calculateTime(soc, power, capacity) {
-    if (!power || Math.abs(power) < 10) return "--h";
+    if (!power || Math.abs(power) < 15) return "--h";
     const whRemaining = (soc / 100) * capacity;
     const whToFull = ((100 - soc) / 100) * capacity;
-    
-    if (power < 0) { // Décharge
+    if (power < 0) {
       const hours = whRemaining / Math.abs(power);
       return `Vide: ${Math.floor(hours)}h${Math.round((hours % 1) * 60)}m`;
-    } else { // Charge
+    } else {
       const hours = whToFull / power;
       return `Pleine: ${Math.floor(hours)}h${Math.round((hours % 1) * 60)}m`;
     }
@@ -96,27 +96,28 @@ class EnergieCard extends LitElement {
     const bat_values = [b1, b2, b3].filter(v => v !== null);
     const avg_soc = bat_values.length > 0 ? Math.round(bat_values.reduce((a, b) => a + b, 0) / bat_values.length) : 0;
 
-    // Logique de Flux : Calculer si la batterie charge ou décharge
-    // Flux = Solaire - Consommation totale
     const customNamesArr = c.custom_names ? c.custom_names.split(/,|\n/).map(n => n.trim()) : [];
     let totalCons = 0;
     const activeDevices = (c.devices || []).map((id, index) => {
       const s = this.hass.states[id];
       const val = s ? parseFloat(s.state) || 0 : 0;
       totalCons += val;
-      return { state: val, stateObj: s, name: customNamesArr[index] || (s?.attributes.friendly_name || id.split('.')[1]) };
+      return { 
+        state: val, 
+        stateObj: s, 
+        name: customNamesArr[index] && customNamesArr[index] !== "" ? customNamesArr[index] : (s?.attributes.friendly_name || id.split('.')[1])
+      };
     }).filter(d => d.state > 5).sort((a, b) => b.state - a.state);
 
-    const batPowerFlux = solar - totalCons; // Positif = Charge, Négatif = Décharge
+    const batPowerFlux = solar - totalCons;
     const batTime = this._calculateTime(avg_soc, batPowerFlux, c.bat_cap || 5120);
-
     const autarky = Math.min(Math.round((solar / (solar + (grid > 0 ? grid : 0) || 1)) * 100), 100) || 0;
-    let cardStatusColor = autarky > 95 ? "#00ff88" : (autarky < 20 ? "#ff4d4d" : "#00f9f9");
+    let cardStatusColor = autarky > 90 ? "#00ff88" : (autarky < 20 ? "#ff4d4d" : "#00f9f9");
 
     return html`
       <ha-card style="border-color: ${cardStatusColor}66">
         <div class="card-header">
-          <span class="title" style="font-size: ${c.title_size || 14}px">${c.title || 'ENERGIE-ULTIMATE'}</span>
+          <span class="title">${c.title || 'ENERGIE-ULTIMATE'}</span>
           <div class="header-badges">
              <span class="badge ${batPowerFlux >= 0 ? 'charge' : 'discharge'}">
                ${batPowerFlux >= 0 ? '▲ CHARGE' : '▼ DÉCHARGE'}
@@ -132,8 +133,8 @@ class EnergieCard extends LitElement {
           </div>
 
           ${hasBattery ? html`
-            <div class="stat-box battery ${batPowerFlux < 0 ? 'critical-glow' : ''}">
-              <ha-icon icon="${avg_soc > 90 ? 'mdi:battery-high' : (avg_soc < 20 ? 'mdi:battery-low' : 'mdi:battery-medium')}"></ha-icon>
+            <div class="stat-box battery">
+              <ha-icon icon="mdi:battery-high"></ha-icon>
               <span class="val" style="font-size: ${c.bat_font_size || 18}px">${avg_soc}%</span>
               <span class="label-time">${batTime}</span>
             </div>
@@ -158,8 +159,8 @@ class EnergieCard extends LitElement {
               <div class="device-item" style="border-bottom-color: ${color}aa">
                 <ha-icon icon="${d.stateObj?.attributes.icon || 'mdi:flash'}" style="color: ${color}"></ha-icon>
                 <div class="dev-info">
-                   <span class="dev-val" style="color: ${color}">${Math.round(d.state)}W</span>
-                   <span class="dev-name">${d.name}</span>
+                   <span class="dev-val" style="color: ${color}; font-size: ${c.font_size || 12}px">${Math.round(d.state)}W</span>
+                   <span class="dev-name" style="font-size: ${(c.font_size || 12) - 1}px">${d.name}</span>
                 </div>
               </div>
             `;
@@ -171,40 +172,58 @@ class EnergieCard extends LitElement {
 
   static styles = css`
     ha-card { background: #0d0d0d; border-radius: 16px; padding: 16px; color: #fff; border: 2px solid transparent; transition: border-color 1s ease; }
-    
     .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-    .title { font-weight: 900; letter-spacing: 2px; color: #555; text-transform: uppercase; }
-    
+    .title { font-weight: 900; letter-spacing: 2px; color: #555; text-transform: uppercase; font-size: 13px; }
     .badge { padding: 4px 10px; border-radius: 6px; font-size: 10px; font-weight: 900; }
     .charge { background: #00ff8822; color: #00ff88; border: 1px solid #00ff88; }
     .discharge { background: #ff4d4d22; color: #ff4d4d; border: 1px solid #ff4d4d; }
 
-    .main-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(70px, 1fr)); gap: 10px; margin-bottom: 20px; align-items: start; }
-    .stat-box { background: #1a1a1a; padding: 15px 5px; border-radius: 12px; text-align: center; display: flex; flex-direction: column; align-items: center; }
+    .main-stats { display: flex; gap: 10px; margin-bottom: 20px; justify-content: space-between; }
+    .stat-box { background: #1a1a1a; padding: 15px 5px; border-radius: 12px; text-align: center; flex: 1; display: flex; flex-direction: column; align-items: center; min-width: 0; }
     .val { font-weight: 900; margin: 5px 0; }
     .label { font-size: 8px; opacity: 0.5; font-weight: bold; }
-    .label-time { font-size: 9px; color: #00f9f9; font-weight: bold; margin-top: 2px; }
+    .label-time { font-size: 9px; color: #00f9f9; font-weight: bold; }
 
-    /* Animations de Flux */
+    .autarky-bar-container { height: 20px; background: #1a1a1a; border-radius: 6px; position: relative; overflow: hidden; margin-bottom: 20px; }
+    .autarky-fill { height: 100%; transition: width 2s ease-in-out; opacity: 0.6; }
+    .autarky-text { position: absolute; width: 100%; text-align: center; top: 3px; font-size: 10px; font-weight: 900; color: #fff; }
+
+    /* GRILLE ADAPTATIVE POUR LES APPAREILS */
+    .device-list { 
+      display: grid; 
+      grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); 
+      gap: 8px; 
+    }
+    .device-item { 
+      background: #151515; 
+      padding: 8px 10px; 
+      border-radius: 10px; 
+      display: flex; 
+      align-items: center; 
+      gap: 8px; 
+      border-bottom: 3px solid transparent;
+      min-width: 0; /* Important pour le texte long */
+    }
+    .dev-info { 
+      display: flex; 
+      flex-direction: column; 
+      min-width: 0; /* Permet au texte de se compresser ou d'aller à la ligne */
+      flex: 1;
+    }
+    .dev-val { font-weight: 900; }
+    .dev-name { 
+      opacity: 0.7; 
+      line-height: 1.1;
+      word-break: break-word; /* Force le retour à la ligne si le mot est trop long */
+      overflow-wrap: anywhere;
+    }
+
     .flowing { animation: glow-green 2s infinite; }
     .flowing-red { animation: glow-red 2s infinite; }
     @keyframes glow-green { 0%, 100% { color: #fff; } 50% { color: #00ff88; filter: drop-shadow(0 0 5px #00ff88); } }
     @keyframes glow-red { 0%, 100% { color: #fff; } 50% { color: #ff4d4d; filter: drop-shadow(0 0 5px #ff4d4d); } }
     
-    .critical-glow { border: 1px solid #ff4d4d44; animation: pulse-bg 2s infinite; }
-    @keyframes pulse-bg { 0% { background: #1a1a1a; } 50% { background: #331111; } 100% { background: #1a1a1a; } }
-
-    .autarky-bar-container { height: 24px; background: #1a1a1a; border-radius: 8px; position: relative; overflow: hidden; margin-bottom: 20px; }
-    .autarky-fill { height: 100%; transition: width 2s ease-in-out; opacity: 0.6; }
-    .autarky-text { position: absolute; width: 100%; text-align: center; top: 4px; font-size: 10px; font-weight: 900; letter-spacing: 1px; color: #fff; }
-
-    .device-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 12px; }
-    .device-item { background: #151515; padding: 10px; border-radius: 10px; display: flex; align-items: center; gap: 10px; border-bottom: 3px solid transparent; }
-    .dev-info { display: flex; flex-direction: column; }
-    .dev-val { font-weight: 900; font-size: 12px; }
-    .dev-name { font-size: 9px; opacity: 0.6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 60px; }
-    
-    ha-icon { --mdc-icon-size: 24px; color: #00f9f9; }
+    ha-icon { --mdc-icon-size: 22px; color: #00f9f9; flex-shrink: 0; }
   `;
 }
 
@@ -215,6 +234,6 @@ window.customCards = window.customCards || [];
 window.customCards.push({
   type: "energie-card",
   name: "Energie Card Ultimate",
-  description: "Dashboard pro avec estimation d'autonomie et flux.",
+  description: "Dashboard avec grille d'appareils adaptative.",
   preview: true
 });
