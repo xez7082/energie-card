@@ -33,6 +33,7 @@
 ## ⚙️ Logique de Calcul
 L'autonomie est basée sur la capacité nominale des batteries LFP (LiFePO4).
 
+![Energie Card Preview](https://github.com/xez7082/energie-card/blob/main/enerrgie.png)
 
 La carte multiplie le nombre de modules sélectionnés par **5 120 Wh** pour définir votre réserve totale, puis croise cette donnée avec le flux entrant (Solaire) et sortant (Appareils).
 
