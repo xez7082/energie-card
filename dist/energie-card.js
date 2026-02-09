@@ -96,12 +96,11 @@ class EnergieCard extends LitElement {
     const total_cons = solar + (grid > 0 ? grid : 0);
     const autarky = Math.min(Math.round((solar / total_cons) * 100), 100) || 0;
 
-    // Logique de couleur et d'alerte
     let autarkyColor = "#00f9f9";
     let isCritical = false;
     if (autarky > 80) autarkyColor = "#00ff88";
     if (autarky < 20) autarkyColor = "#ff4d4d";
-    if (autarky < 5) isCritical = true; // Alerte critique sous 5%
+    if (autarky < 5) isCritical = true;
 
     const customNamesArr = c.custom_names ? c.custom_names.split(/,|\n/).map(n => n.trim()) : [];
 
@@ -131,8 +130,8 @@ class EnergieCard extends LitElement {
             <div class="help-content">
                <h3>⚡ Aide Energie Card</h3>
                <p><b>Tri :</b> Automatique par puissance décroissante.</p>
-               <p><b>Alerte :</b> L'étiquette d'autonomie clignote sous 5%.</p>
-               <p><b>Configuration :</b> Les noms se règlent par ligne dans l'éditeur.</p>
+               <p><b>Alertes :</b> Clignotement sous 5% d'autonomie.</p>
+               <p><b>Icônes :</b> Utilisez les icônes de vos entités Home Assistant.</p>
                <button class="close-btn">FERMER</button>
             </div>
           </div>
@@ -149,7 +148,7 @@ class EnergieCard extends LitElement {
         <div class="progress-wrapper">
           <div class="progress-label ${isCritical ? 'critical-blink' : ''}" style="left: ${autarky}%; color: ${autarkyColor}">
             <span style="border-color: ${autarkyColor}">L'autonomie est de : ${autarky}%</span>
-            <ha-icon icon="mdi:menu-down" style="color: ${autarkyColor}"></ha-icon>
+            <ha-icon icon="mdi:menu-down"></ha-icon>
           </div>
           <div class="progress-container">
             <div class="progress-bar" style="width: ${autarky}%; background: linear-gradient(90deg, ${autarkyColor}, #008f8f); box-shadow: 0 0 10px ${autarkyColor}"></div>
@@ -180,15 +179,16 @@ class EnergieCard extends LitElement {
           ${activeDevices.map(d => {
             const pwr = Math.round(d.state);
             const color = this._getPowerColor(pwr);
+            const icon = d.stateObj?.attributes.icon || 'mdi:flash';
             return html`
               <div class="device-item" style="border-color: ${color}44">
                 <ha-icon class="active-icon" 
-                         icon="${d.stateObj?.attributes.icon || 'mdi:flash'}" 
-                         style="--mdc-icon-size: ${c.icon_size || 20}px; color: ${color}; filter: drop-shadow(0 0 3px ${color})">
+                         icon="${icon}" 
+                         style="--mdc-icon-size: ${c.icon_size || 22}px; color: ${color}; filter: drop-shadow(0 0 3px ${color})">
                 </ha-icon>
                 <div class="dev-info">
-                   <span class="dev-val" style="font-size: ${c.font_size || 11}px; color: ${color}">${pwr}W</span>
-                   <span class="dev-name" style="font-size: ${(c.font_size || 11) - 1}px">${d.name}</span>
+                   <span class="dev-val" style="font-size: ${c.font_size || 12}px; color: ${color}">${pwr}W</span>
+                   <span class="dev-name" style="font-size: ${(c.font_size || 12) - 2}px">${d.name}</span>
                 </div>
               </div>
             `;
@@ -201,44 +201,29 @@ class EnergieCard extends LitElement {
   static styles = css`
     ha-card { background: rgba(13, 13, 13, 0.95); backdrop-filter: blur(10px); border: 1px solid rgba(0, 249, 249, 0.3); border-radius: 20px; padding: 18px; color: #fff; position: relative; overflow: hidden; }
     
-    .help-icon { position: absolute; top: 15px; right: 15px; cursor: pointer; opacity: 0.5; transition: 0.3s; z-index: 10; }
-    .help-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 100; display: flex; align-items: center; justify-content: center; }
-    .help-content { padding: 20px; text-align: left; max-width: 80%; }
-    .close-btn { background: #00f9f9; border: none; padding: 8px 15px; border-radius: 5px; font-weight: bold; cursor: pointer; margin-top: 15px; width: 100%; }
+    .help-icon { position: absolute; top: 15px; right: 15px; cursor: pointer; opacity: 0.5; z-index: 10; }
+    .help-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.92); z-index: 100; display: flex; align-items: center; justify-content: center; }
+    .help-content { padding: 20px; text-align: center; max-width: 85%; }
+    .close-btn { background: #00f9f9; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 15px; }
 
-    .progress-wrapper { position: relative; margin-top: 38px; margin-bottom: 28px; }
+    .progress-wrapper { position: relative; margin-top: 40px; margin-bottom: 30px; }
     .progress-label { 
-      position: absolute; 
-      top: -28px; 
-      transform: translateX(-50%); 
+      position: absolute; top: -30px; transform: translateX(-50%); 
       transition: left 1.5s ease-in-out, color 0.5s ease; 
-      display: flex; 
-      flex-direction: column; 
-      align-items: center; 
-      z-index: 2;
-      width: max-content;
+      display: flex; flex-direction: column; align-items: center; z-index: 2; width: max-content;
     }
     .progress-label span { 
-      font-size: 10px; 
-      background: rgba(0, 0, 0, 0.85); 
-      padding: 3px 10px; 
-      border-radius: 6px; 
-      white-space: nowrap;
-      border: 1px solid transparent;
-      font-weight: bold;
+      font-size: 10px; background: rgba(0, 0, 0, 0.85); padding: 3px 10px; 
+      border-radius: 6px; border: 1px solid transparent; font-weight: bold;
     }
+    .progress-label ha-icon { --mdc-icon-size: 20px; margin-top: -7px; }
     
-    /* Animation de clignotement critique */
-    .critical-blink { animation: alert-blink 1s infinite alternate; }
-    @keyframes alert-blink {
-      from { opacity: 1; transform: translateX(-50%) scale(1); }
-      to { opacity: 0.5; transform: translateX(-50%) scale(1.05); }
-    }
+    .critical-blink { animation: alert-blink 0.8s infinite alternate; }
+    @keyframes alert-blink { from { opacity: 1; } to { opacity: 0.4; } }
 
-    .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px; padding-right: 30px; }
+    .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
     .title { font-weight: 800; color: #00f9f9; letter-spacing: 1px; }
-    .badge { padding: 5px 14px; border-radius: 20px; font-weight: bold; border: 1px solid rgba(255,255,255,0.1); white-space: nowrap; }
-    .badge.autarky { background: rgba(0, 249, 249, 0.1); color: #00f9f9; }
+    .badge { padding: 5px 12px; border-radius: 20px; font-weight: bold; border: 1px solid rgba(255,255,255,0.1); }
     
     .progress-container { height: 10px; background: rgba(255,255,255,0.05); border-radius: 12px; overflow: hidden; }
     .progress-bar { height: 100%; transition: width 1.5s ease-in-out, background 0.5s ease; }
@@ -246,12 +231,20 @@ class EnergieCard extends LitElement {
     .main-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; text-align: center; }
     .stat-box { background: rgba(255,255,255,0.02); padding: 12px 5px; border-radius: 15px; border: 1px solid rgba(255,255,255,0.05); }
     .val { display: block; font-weight: bold; font-size: 16px; margin: 4px 0; }
-    .label { font-size: 8px; opacity: 0.4; font-weight: bold; text-transform: uppercase; }
-    .bat-mini { font-size: 7px; color: #00f9f9; }
-    .device-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 12px; margin-top: 22px; }
-    .device-item { background: rgba(255,255,255,0.03); padding: 12px 8px; border-radius: 14px; border: 1px solid transparent; display: flex; flex-direction: column; align-items: center; gap: 6px; min-height: 85px; justify-content: center; }
+    .label { font-size: 8px; opacity: 0.4; text-transform: uppercase; font-weight: bold; }
+    
+    .device-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 10px; margin-top: 25px; }
+    .device-item { 
+      background: rgba(255,255,255,0.03); padding: 12px 6px; border-radius: 16px; 
+      border: 1px solid transparent; display: flex; flex-direction: column; 
+      align-items: center; justify-content: center; gap: 6px; min-height: 90px;
+    }
+    .dev-info { display: flex; flex-direction: column; align-items: center; text-align: center; width: 100%; }
+    .dev-val { font-weight: 800; line-height: 1.1; }
+    .dev-name { opacity: 0.6; line-height: 1; margin-top: 3px; word-break: break-word; }
+
     .active-icon { animation: pulse 2.5s infinite ease-in-out; }
-    @keyframes pulse { 0%, 100% { transform: scale(1); opacity: 0.7; } 50% { transform: scale(1.1); opacity: 1; } }
+    @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
     ha-icon { color: #00f9f9; }
   `;
 }
@@ -263,6 +256,6 @@ window.customCards = window.customCards || [];
 window.customCards.push({
   type: "energie-card",
   name: "Energie Card Ultimate",
-  description: "Dashboard complet avec alertes d'autonomie.",
+  description: "Dashboard optimisé avec icônes et alertes.",
   preview: true
 });
