@@ -1,47 +1,53 @@
-# ⚡ Energie Card Ultimate
+# ⚡ Energie Card Ultimate (v2.6)
+### Spécial Hybride : StorCube + Marstek Venus
 
-[![HACS](https://img.shields.io/badge/HACS-Default-blue.svg)](https://github.com/hacs/integration)
-![Version](https://img.shields.io/github/v/release/xez7082/energie-card?include_prereleases&label=version&color=orange)
-[![License](https://img.shields.io/github/license/xez7082/energie-card?color=blue)](LICENSE)
-[![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-green.svg)](https://github.com/xez7082/energie-card/graphs/commit-activity)
-
-**Energie Card Ultimate** est une interface haut de gamme pour Home Assistant, optimisée pour le suivi des écosystèmes **Marstek, StorCube et ZLinky**. Elle transforme vos données brutes en un tableau de bord dynamique, intuitif et intelligent.
-
-### 📸 Aperçu du Dashboard
-![Energie Card Preview](https://github.com/xez7082/energie-card/blob/main/enerrgie.png)
+Ce projet est une carte **Lovelace personnalisée** pour Home Assistant. Elle centralise la gestion d'un parc batterie hybride de **7168 Wh** et optimise la consommation domestique en fonction d'un **talon cible de 150W**.
 
 ---
 
-## ✨ Points Forts de la Version Ultimate
+## 📸 Aperçu des Fonctionnalités
 
-* **⏳ Calculateur d'Autonomie IBC :** Sélectionnez votre nombre de modules (1 à 6) dans l'éditeur. La carte calcule automatiquement le temps restant avant la décharge (Vide) ou la charge complète (Pleine) en fonction de la puissance réelle.
-* **🔄 Flux d'Énergie Dynamique :** Détection automatique du sens du courant avec badges animés `CHARGE` / `DÉCHARGE` et icônes pulsantes (Vert pour le solaire, Rouge pour le réseau).
-* **📱 Grille XL Adaptative :** Les tuiles d'appareils utilisent une largeur minimale de 140px pour une lecture parfaite des noms longs.
-* **🎯 Tri & Filtrage Intelligent :** Classement automatique des appareils par consommation (W) et masquage des entités sous 5W pour garder un dashboard propre.
-* **🎨 Éditeur Visuel Intégré :** Plus besoin de YAML. Modifiez les tailles de police, les noms et les modules via 3 onglets dédiés.
+* **Gestion Hybride** : Additionne automatiquement `2x 1024Wh (StorCube)` + `1x 5120Wh (Marstek)`.
+* **Algorithme de Sobriété** : Analyse l'écart entre ta conso réelle et ton talon de 150W.
+* **Indicateur de Flux** : Visualisation instantanée Charge (Solaire > Conso) / Décharge (Batterie/Réseau).
+* **Sparklines** : Historique graphique ultra-léger sans base de données externe.
+* **Adaptabilité** : Mode nuit automatique et icônes dynamiques à gauche.
 
----
 
-## 🚀 Installation Rapide
-
-1.  **Fichier :** Déposez le fichier `energie-card.js` dans votre dossier `/config/www/`.
-2.  **Ressource :** Dans Home Assistant, allez dans *Paramètres > Tableaux de bord > Ressources* et ajoutez `/local/energie-card.js` (Type : Module JavaScript).
-3.  **Carte :** Ajoutez une carte sur votre tableau de bord et recherchez `Energie Card Ultimate`.
 
 ---
 
-## ⚙️ Logique de Calcul
-L'autonomie est basée sur la capacité nominale des batteries LFP (LiFePO4).
+## 🛠 Installation
 
-![Energie Card Preview](https://github.com/xez7082/energie-card/blob/main/enrgiiie.png)
-
-La carte multiplie le nombre de modules sélectionnés par **5 120 Wh** pour définir votre réserve totale, puis croise cette donnée avec le flux entrant (Solaire) et sortant (Appareils).
-
----
-
-## ⚖️ Licence & Release
-* **License :** MIT (Créez un fichier `LICENSE` sur votre dépôt pour activer le badge).
-* **Version :** Créez une "Release" sur GitHub pour mettre à jour le badge de version.
+1.  **Fichier** : Créez `/www/community/energie-card.js` et collez le code JavaScript fourni.
+2.  **Ressource** : Ajoutez `/local/community/energie-card.js` dans vos ressources Lovelace (Type: Module).
+3.  **Configuration** :
+    * **Talon** : 150 (Watts)
+    * **Capacité StorCube** : 2048 (Wh)
+    * **Capacité Marstek** : 5120 (Wh)
 
 ---
-*Développé par @xez7082 pour la communauté Home Assistant.*
+
+## 🤖 Automatisations Recommandées (YAML)
+
+Voici deux automatisations à copier dans votre fichier `automations.yaml` pour tirer profit de la carte.
+
+### 1. Alerte de dépassement de talon (Vigilance)
+Cette automatisation vous prévient si vous dépassez 400W (talon + marge) pendant plus de 10 minutes sans raison apparente.
+
+```yaml
+alias: "Energie : Alerte Dépassement Talon"
+trigger:
+  - platform: numeric_state
+    entity_id: sensor.votre_consommation_totale # Remplacez par votre sensor
+    above: 400
+    for: "00:10:00"
+condition:
+  - condition: state
+    entity_id: sun.sun
+    state: "below_horizon" # Uniquement la nuit pour éviter les faux positifs solaires
+action:
+  - service: notify.mobile_app_votre_telephone
+    data:
+      title: "⚠️ Vigilance Énergie"
+      message: "La maison consomme plus que le talon (actuel: {{ states('sensor.votre_consommation_totale') }}W)."
