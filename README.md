@@ -1,37 +1,46 @@
-# ⚡ Energie Card
+# ⚡ Energie Card Ultimate
 
 [![HACS](https://img.shields.io/badge/HACS-Default-blue.svg)](https://github.com/hacs/integration)
 ![Version](https://img.shields.io/github/v/release/xez7082/energie-card?include_prereleases&label=version&color=orange)
 [![License](https://img.shields.io/github/license/xez7082/energie-card?color=blue)](LICENSE)
 [![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-green.svg)](https://github.com/xez7082/energie-card/graphs/commit-activity)
 
-**Energie Card Ultimate** est une interface haut de gamme pour Home Assistant, optimisée pour le suivi Marstek et ZLinky. Elle gère jusqu'à 60 appareils avec un design **Glassmorphism** élégant.
+**Energie Card Ultimate** est une interface haut de gamme pour Home Assistant, optimisée pour le suivi des écosystèmes **Marstek, StorCube et ZLinky**. Elle transforme vos données brutes en un tableau de bord dynamique, intuitif et intelligent.
 
 ### 📸 Aperçu du Dashboard
-![Spa Preview](https://github.com/xez7082/energie-card/blob/main/elec.png)
-
+![Energie Card Preview](https://github.com/xez7082/energie-card/blob/main/elec.png)
 
 ---
 
-## ✨ Points Forts
-* **Tri Dynamique :** Classement automatique des appareils par puissance (W).
-* **Filtrage Intelligent :** Masquage automatique des appareils consommant moins de 5W.
-* **Affichage XL :** Tuiles de 120px pour une lecture parfaite des noms longs.
-* **Aide Intégrée :** Fenêtre popup d'instructions accessible directement sur la carte.
+## ✨ Points Forts de la Version Ultimate
+
+* **⏳ Calculateur d'Autonomie IBC :** Sélectionnez votre nombre de modules (1 à 6) dans l'éditeur. La carte calcule automatiquement le temps restant avant la décharge (Vide) ou la charge complète (Pleine) en fonction de la puissance réelle.
+* **🔄 Flux d'Énergie Dynamique :** Détection automatique du sens du courant avec badges animés `CHARGE` / `DÉCHARGE` et icônes pulsantes (Vert pour le solaire, Rouge pour le réseau).
+* **📱 Grille XL Adaptative :** Les tuiles d'appareils utilisent une largeur minimale de 140px pour une lecture parfaite des noms longs.
+* **🎯 Tri & Filtrage Intelligent :** Classement automatique des appareils par consommation (W) et masquage des entités sous 5W pour garder un dashboard propre.
+* **🎨 Éditeur Visuel Intégré :** Plus besoin de YAML. Modifiez les tailles de police, les noms et les modules via 3 onglets dédiés.
 
 ---
 
 ## 🚀 Installation Rapide
 
-1.  **Fichier :** Déposez `energie-card.js` dans votre dossier `/config/www/`.
-2.  **Ressource :** Ajoutez `/local/energie-card.js` dans les ressources de votre tableau de bord.
-3.  **Image :** Placez votre fichier `elec.png` dans le dossier `/config/www/`.
+1.  **Fichier :** Déposez le fichier `energie-card.js` dans votre dossier `/config/www/`.
+2.  **Ressource :** Dans Home Assistant, allez dans *Paramètres > Tableaux de bord > Ressources* et ajoutez `/local/energie-card.js` (Type : Module JavaScript).
+3.  **Carte :** Ajoutez une carte sur votre tableau de bord et recherchez `Energie Card Ultimate`.
+
+---
+
+## ⚙️ Logique de Calcul
+L'autonomie est basée sur la capacité nominale des batteries LFP (LiFePO4).
+
+
+La carte multiplie le nombre de modules sélectionnés par **5 120 Wh** pour définir votre réserve totale, puis croise cette donnée avec le flux entrant (Solaire) et sortant (Appareils).
 
 ---
 
 ## ⚖️ Licence & Release
-* Pour activer le badge **License** : Créez un fichier nommé `LICENSE` sur votre GitHub.
-* Pour activer le badge **Version** : Créez une "Release" (v1.0.0) sur GitHub.
+* **License :** MIT (Créez un fichier `LICENSE` sur votre dépôt pour activer le badge).
+* **Version :** Créez une "Release" sur GitHub pour mettre à jour le badge de version.
 
 ---
 *Développé par @xez7082 pour la communauté Home Assistant.*
