@@ -86,6 +86,17 @@ class EnergieCard extends LitElement {
     if (this._history[type].length > 40) this._history[type].shift();
   }
 
+  _calculateAutonomy(soc, power, capTotal) {
+    if (!power || Math.abs(power) < 15) return "--h --m";
+    if (power < 0) {
+      const hours = ((soc / 100) * capTotal) / Math.abs(power);
+      return `Vide: ${Math.floor(hours)}h${Math.round((hours % 1) * 60)}m`;
+    } else {
+      const hours = (((100 - soc) / 100) * capTotal) / power;
+      return `Pleine: ${Math.floor(hours)}h${Math.round((hours % 1) * 60)}m`;
+    }
+  }
+
   render() {
     if (!this.hass || !this.config) return html``;
     const c = this.config;
@@ -123,7 +134,7 @@ class EnergieCard extends LitElement {
       };
     }).filter(d => d.state > 5).sort((a, b) => b.state - a.state);
 
-    const flux = solar - totalCons;
+    const netFlux = solar - totalCons;
     const price = parseFloat(c.kwh_price) || 0.2288;
     const hCost = (totalCons * price) / 1000;
     const hGain = (solar * price) / 1000;
@@ -137,7 +148,7 @@ class EnergieCard extends LitElement {
           <span class="title" style="font-size: ${c.size_title || 11}px">${solar < 10 ? '🌙 VEILLE' : (c.title || 'ENERGIE')}</span>
           <div class="header-right">
              <span class="sobriety-badge" style="color: ${cardStatusColor}">SOBRIÉTÉ: ${Math.round(sobriety)}%</span>
-             <span class="badge ${flux >= 0 ? 'charge' : 'discharge'}">${flux >= 0 ? '▲ CHARGE' : '▼ DÉCHARGE'}</span>
+             <span class="badge ${netFlux >= 0 ? 'charge' : 'discharge'}">${netFlux >= 0 ? '▲ CHARGE' : '▼ DÉCHARGE'}</span>
           </div>
         </div>
 
@@ -153,6 +164,7 @@ class EnergieCard extends LitElement {
             ${this._renderSparkline(this._history.battery, cardStatusColor + '44')}
             <ha-icon icon="mdi:battery-clock" style="color: ${cardStatusColor}"></ha-icon>
             <span class="val" style="font-size: ${c.size_val || 17}px">${globalSoc}%</span>
+            <span class="label-time" style="font-size: 9px; color: #00f9f9; font-weight: bold; z-index: 1;">${this._calculateAutonomy(globalSoc, netFlux, totalCapWh)}</span>
             <div class="mini-socs">
               <span>S1:${Math.round(s1)}%</span><span>S2:${Math.round(s2)}%</span><span>MV:${Math.round(s3)}%</span>
             </div>
@@ -209,7 +221,8 @@ class EnergieCard extends LitElement {
     .dev-name { color: #777; text-transform: uppercase; font-weight: bold; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .badge { padding: 4px 8px; border-radius: 4px; font-size: 9px; font-weight: 900; }
     .charge { background: #00ff8815; color: #00ff88; }
-    .discharge { background: #ff4d4d15; color: #ff4d4d; }
+    .discharge { background: #ff4d4d15; color: #ff4d4d; animation: pulse 2s infinite; }
+    @keyframes pulse { 0% { box-shadow: 0 0 0 0 #ff4d4d44; } 70% { box-shadow: 0 0 0 10px #ff4d4d00; } 100% { box-shadow: 0 0 0 0 #ff4d4d00; } }
     ha-icon { --mdc-icon-size: 22px; color: #00f9f9; flex-shrink: 0; }
     .dimmed { opacity: 0.3; filter: grayscale(1); }
   `;
