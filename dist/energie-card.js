@@ -38,7 +38,7 @@ class EnergieCardEditor extends LitElement {
         { name: "devices", label: "Appareils à surveiller", selector: { entity: { multiple: true, domain: "sensor" } } },
         { name: "kwh_price", label: "Prix du kWh (€)", selector: { number: { min: 0, max: 1, step: 0.0001, mode: "box" } } }
       ],
-      [ // ONGLET 3: STYLE (LE NOUVEAU BOUTON)
+      [ // ONGLET 3: STYLE
         { name: "accent_color", label: "Couleur d'accentuation", selector: { select: { options: [
           { value: "#00f9f9", label: "Cyan" }, { value: "#00ff88", label: "Vert" },
           { value: "#ff9500", label: "Ambre" }, { value: "#ff4d4d", label: "Rouge" }
@@ -77,7 +77,6 @@ class EnergieCard extends LitElement {
     if (!this.hass || !this.config) return html``;
     const c = this.config;
     
-    // CAPTEURS ET CALCULS
     const solar = Math.round(parseFloat(this.hass.states[c.solar]?.state) || 0);
     const gridPower = Math.round(parseFloat(this.hass.states[c.linky]?.state) || 0);
     const s1 = parseFloat(this.hass.states[c.bat1_soc]?.state) || 0;
@@ -95,14 +94,15 @@ class EnergieCard extends LitElement {
       const s = this.hass.states[id];
       const val = s ? parseFloat(s.state) || 0 : 0;
       totalCons += val;
-      return { state: val, name: s?.attributes.friendly_name || id.split('.')[1], icon: s?.attributes.icon };
+      // RÉTABLISSEMENT DU NOM : Priorité au friendly_name, sinon partie après le point
+      const name = s?.attributes.friendly_name || id.split('.')[1].replace(/_/g, ' ');
+      return { state: val, name: name, icon: s?.attributes.icon };
     }).filter(d => d.state > 5).sort((a, b) => b.state - a.state);
 
     const netFlux = solar - totalCons;
     const kwhPrice = parseFloat(c.kwh_price) || 0.2288;
     const hourlyCost = (totalCons * kwhPrice) / 1000;
 
-    // AUTONOMIE
     let autonomyText = "";
     if (Math.abs(netFlux) > 20) {
         if (netFlux < 0 && globalSoc > 5) {
@@ -114,7 +114,6 @@ class EnergieCard extends LitElement {
         }
     }
 
-    // LOGIQUE COULEURS
     let statusLabel = "PRODUCTION FAIBLE";
     let statusColor = c.accent_color || "#00f9f9";
     let isWasting = false;
