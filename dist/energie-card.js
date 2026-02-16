@@ -160,8 +160,8 @@ class EnergieCard extends LitElement {
         </div>
 
         <div class="sobriety-bar">
-           <div class="sobriety-fill" style="width: ${sobriety}%; background: ${cardStatusColor}"></div>
-           <span class="sobriety-text">${totalCons <= talon ? 'TALON ATTEINT' : `SURPLUS: +${Math.max(0, totalCons - talon)}W`}</span>
+            <div class="sobriety-fill" style="width: ${sobriety}%; background: ${cardStatusColor}"></div>
+            <span class="sobriety-text">${totalCons <= talon ? 'TALON ATTEINT' : `SURPLUS: +${Math.max(0, totalCons - talon)}W`}</span>
         </div>
 
         <div class="device-list">
@@ -183,30 +183,40 @@ class EnergieCard extends LitElement {
 
   static styles = css`
     ha-card { background: #0a0a0a; border-radius: 20px; padding: 18px; color: #fff; border: 2px solid transparent; transition: 0.5s; overflow: hidden; }
-    .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-    .title { font-weight: 900; color: #555; text-transform: uppercase; font-size: 11px; }
-    .sobriety-badge { font-size: 9px; font-weight: 900; }
+    
+    .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 22px; }
+    
+    /* MODIFICATION : TEXTE PLUS GRAND POUR VEILLE / TITRE */
+    .title { font-weight: 900; color: #fff; text-transform: uppercase; font-size: 18px; letter-spacing: 1px; }
+    
+    .header-right { display: flex; align-items: center; gap: 12px; }
+
+    /* MODIFICATION : TEXTE PLUS GRAND POUR SOBRIÉTÉ */
+    .sobriety-badge { font-size: 14px; font-weight: 900; }
+
+    /* MODIFICATION : TEXTE PLUS GRAND POUR CHARGE / DÉCHARGE */
+    .badge { padding: 6px 12px; border-radius: 6px; font-size: 13px; font-weight: 900; }
+    .charge { background: #00ff8820; color: #00ff88; border: 1px solid #00ff8844; }
+    .discharge { background: #ff4d4d20; color: #ff4d4d; border: 1px solid #ff4d4d44; }
+
     .main-stats { display: flex; gap: 10px; margin-bottom: 20px; }
     .stat-box { background: #141414; padding: 12px 5px; border-radius: 12px; flex: 1; text-align: center; position: relative; overflow: hidden; display: flex; flex-direction: column; align-items: center; border: 1px solid #222; }
-    .val { font-weight: 900; font-size: 17px; margin: 4px 0; z-index: 1; }
-    .label { font-size: 8px; color: #888; text-transform: uppercase; z-index: 1; }
-    .label-time { font-size: 9px; color: #00f9f9; font-weight: bold; z-index: 1; }
+    .val { font-weight: 900; font-size: 20px; margin: 4px 0; z-index: 1; }
+    .label { font-size: 10px; color: #888; text-transform: uppercase; z-index: 1; }
+    .label-time { font-size: 11px; color: #00f9f9; font-weight: bold; z-index: 1; }
     .mini-socs { display: flex; gap: 4px; z-index: 1; margin-top: 2px; }
-    .mini-socs span { font-size: 7px; color: #666; font-weight: bold; }
+    .mini-socs span { font-size: 8px; color: #666; font-weight: bold; }
     .sparkline { position: absolute; bottom: 0; left: 0; width: 100%; height: 30px; opacity: 0.4; pointer-events: none; }
-    .sobriety-bar { height: 14px; background: #1a1a1a; border-radius: 6px; position: relative; overflow: hidden; margin-bottom: 20px; border: 1px solid #333; }
+    .sobriety-bar { height: 16px; background: #1a1a1a; border-radius: 6px; position: relative; overflow: hidden; margin-bottom: 20px; border: 1px solid #333; }
     .sobriety-fill { height: 100%; transition: width 1.5s ease; }
-    .sobriety-text { position: absolute; width: 100%; text-align: center; top: 1px; font-size: 8px; font-weight: 900; }
+    .sobriety-text { position: absolute; width: 100%; text-align: center; top: 1px; font-size: 10px; font-weight: 900; }
     .device-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(135px, 1fr)); gap: 10px; }
     .device-item { background: #111; padding: 10px; border-radius: 12px; display: flex; align-items: center; gap: 12px; border: 1px solid #222; }
     .dev-info { display: flex; flex-direction: column; min-width: 0; flex: 1; align-items: flex-start; }
     .dev-val { font-weight: 900; font-size: 14px; line-height: 1.1; }
     .dev-name { font-size: 9px; color: #777; text-transform: uppercase; font-weight: bold; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .badge { padding: 4px 8px; border-radius: 4px; font-size: 9px; font-weight: 900; }
-    .charge { background: #00ff8815; color: #00ff88; }
-    .discharge { background: #ff4d4d15; color: #ff4d4d; }
-    ha-icon { --mdc-icon-size: 22px; color: #00f9f9; flex-shrink: 0; }
-    .dimmed { opacity: 0.3; filter: grayscale(1); }
+    ha-icon { --mdc-icon-size: 24px; color: #00f9f9; flex-shrink: 0; }
+    .dimmed { opacity: 0.4; filter: grayscale(0.6); }
   `;
 }
 
