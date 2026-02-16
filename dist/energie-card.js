@@ -25,9 +25,8 @@ class EnergieCardEditor extends LitElement {
       [ // SOURCES
         { name: "title", label: "Titre Dashboard", selector: { text: {} } },
         { name: "solar", label: "Entité Solaire", selector: { entity: { domain: "sensor" } } },
-        { name: "name_solar", label: "Nom personnalisé Solaire", selector: { text: {} } },
+        { name: "name_solar", label: "Nom affiché Solaire", selector: { text: {} } },
         { name: "linky", label: "Entité Linky", selector: { entity: { domain: "sensor" } } },
-        { name: "name_grid", label: "Nom personnalisé Réseau", selector: { text: {} } }
       ],
       [ // BATTERIES
         { name: "bat1_soc", label: "SOC StorCube 1", selector: { entity: { domain: "sensor" } } },
@@ -40,9 +39,16 @@ class EnergieCardEditor extends LitElement {
         { name: "cap_mv", label: "Capacité Marstek (Wh)", selector: { number: { min: 0, max: 10000, mode: "box" } } }
       ],
       [ // APPAREILS
-        { name: "devices", label: "Appareils à surveiller", selector: { entity: { multiple: true, domain: "sensor" } } },
-        { name: "device_names", label: "Renommer Appareils (ex: id:Nom, id:Nom)", selector: { text: {} } },
-        { name: "kwh_price", label: "Prix du kWh (€)", selector: { number: { min: 0, max: 1, step: 0.0001, mode: "box" } } }
+        { name: "devices", label: "Sélectionner les Appareils", selector: { entity: { multiple: true, domain: "sensor" } } },
+        { name: "kwh_price", label: "Prix du kWh (€)", selector: { number: { min: 0, max: 1, step: 0.0001, mode: "box" } } },
+        { name: "n1", label: "Nom Appareil 1", selector: { text: {} } },
+        { name: "n2", label: "Nom Appareil 2", selector: { text: {} } },
+        { name: "n3", label: "Nom Appareil 3", selector: { text: {} } },
+        { name: "n4", label: "Nom Appareil 4", selector: { text: {} } },
+        { name: "n5", label: "Nom Appareil 5", selector: { text: {} } },
+        { name: "n6", label: "Nom Appareil 6", selector: { text: {} } },
+        { name: "n7", label: "Nom Appareil 7", selector: { text: {} } },
+        { name: "n8", label: "Nom Appareil 8", selector: { text: {} } }
       ],
       [ // STYLE
         { name: "accent_color", label: "Couleur d'accentuation", selector: { select: { options: [
@@ -50,9 +56,9 @@ class EnergieCardEditor extends LitElement {
           { value: "#ff9500", label: "Ambre" }, { value: "#ff4d4d", label: "Rouge" }
         ] } } },
         { name: "size_title", label: "Taille Titre", selector: { number: { min: 10, max: 40, mode: "slider" } } },
-        { name: "size_val", label: "Taille Valeurs (W/%)", selector: { number: { min: 15, max: 60, mode: "slider" } } },
-        { name: "size_label", label: "Taille Labels", selector: { number: { min: 7, max: 25, mode: "slider" } } },
-        { name: "size_device", label: "Taille Texte Appareils", selector: { number: { min: 8, max: 25, mode: "slider" } } }
+        { name: "size_val", label: "Taille Gros Chiffres", selector: { number: { min: 15, max: 65, mode: "slider" } } },
+        { name: "size_label", label: "Taille Sous-titres (€/h)", selector: { number: { min: 8, max: 25, mode: "slider" } } },
+        { name: "size_device", label: "Taille Appareils en bas", selector: { number: { min: 8, max: 25, mode: "slider" } } }
       ]
     ];
 
@@ -65,7 +71,11 @@ class EnergieCardEditor extends LitElement {
       <ha-form .hass=${this.hass} .data=${this._config} .schema=${schemas[this._tab]} @value-changed=${this._valueChanged}></ha-form>
     `;
   }
-  static styles = css`.tabs { display: flex; gap: 4px; margin-bottom: 20px; flex-wrap: wrap; } .tab { padding: 10px 4px; background: #2c2c2c; color: #aaa; border-radius: 8px; cursor: pointer; flex: 1; min-width: 70px; text-align: center; font-size: 11px; border: 1px solid #444; } .tab.active { background: #00f9f9; color: #000; font-weight: bold; border-color: #00f9f9; }`;
+  static styles = css`
+    .tabs { display: flex; gap: 4px; margin-bottom: 20px; } 
+    .tab { padding: 10px 4px; background: #2c2c2c; color: #aaa; border-radius: 8px; cursor: pointer; flex: 1; text-align: center; font-size: 11px; border: 1px solid #444; } 
+    .tab.active { background: #00f9f9; color: #000; font-weight: bold; border-color: #00f9f9; }
+  `;
 }
 
 class EnergieCard extends LitElement {
@@ -83,33 +93,27 @@ class EnergieCard extends LitElement {
     const s2 = parseFloat(this.hass.states[c.bat2_soc]?.state) || 0;
     const s3 = parseFloat(this.hass.states[c.bat3_soc]?.state) || 0;
     
-    const capST = parseFloat(c.cap_st) || 655;
-    const capMV = parseFloat(c.cap_mv) || 4510;
-    const totalCapWh = (capST * 2) + capMV;
-    const currentWh = ((s1/100)*capST) + ((s2/100)*capST) + ((s3/100)*capMV);
+    const totalCapWh = ((parseFloat(c.cap_st) || 655) * 2) + (parseFloat(c.cap_mv) || 4510);
+    const currentWh = ((s1/100)*(parseFloat(c.cap_st)||655)) + ((s2/100)*(parseFloat(c.cap_st)||655)) + ((s3/100)*(parseFloat(c.cap_mv)||4510));
     const globalSoc = Math.round((currentWh / totalCapWh) * 100) || 0;
 
-    // Parsing du renommage des appareils
-    const customNames = {};
-    if (c.device_names) {
-      c.device_names.split(',').forEach(item => {
-        const [id, name] = item.split(':');
-        if (id && name) customNames[id.trim()] = name.trim();
-      });
-    }
-
     let totalCons = 0;
-    const activeDevices = (c.devices || []).map(id => {
+    const names = [c.n1, c.n2, c.n3, c.n4, c.n5, c.n6, c.n7, c.n8];
+    
+    const activeDevices = (c.devices || []).map((id, index) => {
       const s = this.hass.states[id];
       const val = s ? parseFloat(s.state) || 0 : 0;
       totalCons += val;
-      const displayName = customNames[id] || s?.attributes.friendly_name || id.split('.')[1];
-      return { state: val, name: displayName, icon: s?.attributes.icon };
+      return { 
+        state: val, 
+        name: names[index] || s?.attributes.friendly_name || id.split('.')[1].replace(/_/g, ' '), 
+        icon: s?.attributes.icon 
+      };
     }).filter(d => d.state > 5).sort((a, b) => b.state - a.state);
 
     const price = parseFloat(c.kwh_price) || 0.2288;
-    const hourlyCost = (totalCons * price) / 1000;
-    const hourlyGain = (solar * price) / 1000;
+    const hCost = (totalCons * price) / 1000;
+    const hGain = (solar * price) / 1000;
 
     let statusColor = c.accent_color || "#00f9f9";
     if (gridPower > 15) statusColor = "#ff4d4d";
@@ -117,31 +121,29 @@ class EnergieCard extends LitElement {
 
     return html`
       <ha-card style="border-color: ${statusColor}88; --status-color: ${statusColor}">
-        <div class="card-header">
-          <span class="title" style="font-size: ${c.size_title || 18}px">${c.title || 'ENERGIE'}</span>
-        </div>
+        <div class="card-header"><span class="title" style="font-size: ${c.size_title || 18}px">${c.title || 'ENERGIE'}</span></div>
 
         <div class="main-stats">
           <div class="stat-box">
             <ha-icon icon="mdi:solar-power"></ha-icon>
             <span class="val" style="font-size: ${c.size_val || 24}px">${solar}W</span>
-            <span class="label" style="font-size: ${c.size_label || 10}px">+${hourlyGain.toFixed(3)}€/h</span>
+            <span class="label" style="font-size: ${c.size_label || 10}px">+${hGain.toFixed(3)}€/h</span>
           </div>
           
           <div class="stat-box">
             <ha-icon icon="mdi:battery-high" style="color: ${statusColor}"></ha-icon>
             <span class="val" style="font-size: ${c.size_val || 24}px">${globalSoc}%</span>
             <div class="mini-socs">
-                <span>${c.name_bat1 || 'S1'}: ${Math.round(s1)}%</span>
-                <span>${c.name_bat2 || 'S2'}: ${Math.round(s2)}%</span>
-                <span>${c.name_bat3 || 'MV'}: ${Math.round(s3)}%</span>
+                <span>${c.name_bat1||'S1'}: ${Math.round(s1)}%</span>
+                <span>${c.name_bat2||'S2'}: ${Math.round(s2)}%</span>
+                <span>${c.name_bat3||'MV'}: ${Math.round(s3)}%</span>
             </div>
           </div>
           
           <div class="stat-box">
             <ha-icon icon="mdi:home-lightning-bolt"></ha-icon>
             <span class="val" style="font-size: ${c.size_val || 24}px">${totalCons}W</span>
-            <span class="label-cost" style="font-size: ${c.size_label || 10}px">-${hourlyCost.toFixed(3)}€/h</span>
+            <span class="label-cost" style="font-size: ${c.size_label || 10}px">-${hCost.toFixed(3)}€/h</span>
           </div>
         </div>
 
@@ -161,19 +163,18 @@ class EnergieCard extends LitElement {
   }
 
   static styles = css`
-    ha-card { background: #0a0a0a; border-radius: 20px; padding: 18px; color: #fff; border: 2px solid transparent; }
-    .card-header { margin-bottom: 20px; text-align: center; }
-    .title { font-weight: 900; text-transform: uppercase; letter-spacing: 1px; }
+    ha-card { background: #0a0a0a; border-radius: 20px; padding: 18px; color: #fff; border: 2px solid transparent; transition: 0.3s; }
+    .card-header { margin-bottom: 20px; text-align: center; font-weight: 900; text-transform: uppercase; }
     .main-stats { display: flex; gap: 8px; margin-bottom: 15px; }
     .stat-box { background: #141414; padding: 12px 4px; border-radius: 12px; flex: 1; text-align: center; border: 1px solid #222; min-height: 105px; display: flex; flex-direction: column; justify-content: center; }
     .val { font-weight: 900; line-height: 1.1; }
     .label { color: #00ff88; font-weight: bold; }
     .label-cost { color: #ff4d4d; font-weight: bold; }
-    .mini-socs { color: #666; font-size: 9px; display: flex; flex-direction: column; margin-top: 5px; font-weight: bold; }
+    .mini-socs { color: #666; font-size: 8px; display: flex; flex-direction: column; margin-top: 5px; font-weight: bold; line-height: 1.2; }
     .device-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; }
     .device-item { background: #111; padding: 8px; border-radius: 10px; display: flex; align-items: center; gap: 8px; border: 1px solid #222; }
     .dev-val { font-weight: 900; color: var(--status-color); }
-    .dev-name { color: #777; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: bold; }
+    .dev-name { color: #777; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: bold; line-height: 1; }
     ha-icon { --mdc-icon-size: 24px; color: #00f9f9; margin-bottom: 4px; }
   `;
 }
