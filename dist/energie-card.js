@@ -21,12 +21,12 @@ class EnergieCardEditor extends LitElement {
   render() {
     if (!this.hass || !this._config) return html``;
     const schemas = [
-      [ // ONGLET 0: SOURCES
+      [ 
         { name: "title", label: "Titre Dashboard", selector: { text: {} } },
         { name: "solar", label: "Puissance Solaire (W)", selector: { entity: { domain: "sensor" } } },
         { name: "linky", label: "Réseau Linky (W)", selector: { entity: { domain: "sensor" } } }
       ],
-      [ // ONGLET 1: BATTERIES
+      [ 
         { name: "bat1_soc", label: "SOC StorCube 1 (%)", selector: { entity: { domain: "sensor" } } },
         { name: "bat2_soc", label: "SOC StorCube 2 (%)", selector: { entity: { domain: "sensor" } } },
         { name: "bat3_soc", label: "SOC Marstek Venus (%)", selector: { entity: { domain: "sensor" } } },
@@ -34,11 +34,11 @@ class EnergieCardEditor extends LitElement {
         { name: "cap_mv", label: "Capacité réelle Marstek (Wh)", selector: { number: { min: 0, max: 10000, mode: "box" } } },
         { name: "talon", label: "Talon Électrique (W)", selector: { number: { min: 0, max: 1000, mode: "box" } } }
       ],
-      [ // ONGLET 2: APPAREILS
+      [
         { name: "devices", label: "Appareils à surveiller", selector: { entity: { multiple: true, domain: "sensor" } } },
         { name: "kwh_price", label: "Prix du kWh (€)", selector: { number: { min: 0, max: 1, step: 0.0001, mode: "box" } } }
       ],
-      [ // ONGLET 3: STYLE
+      [
         { name: "accent_color", label: "Couleur d'accentuation", selector: { select: { options: [
           { value: "#00f9f9", label: "Cyan" }, { value: "#00ff88", label: "Vert" },
           { value: "#ff9500", label: "Ambre" }, { value: "#ff4d4d", label: "Rouge" }
@@ -46,7 +46,7 @@ class EnergieCardEditor extends LitElement {
         { name: "size_title", label: "Taille Titre", selector: { number: { min: 10, max: 40, mode: "slider" } } },
         { name: "size_val", label: "Taille Valeurs (W/%)", selector: { number: { min: 15, max: 60, mode: "slider" } } },
         { name: "size_autonomy", label: "Taille Autonomie", selector: { number: { min: 7, max: 25, mode: "slider" } } },
-        { name: "size_label", label: "Taille Labels (Solaire/Conso)", selector: { number: { min: 7, max: 25, mode: "slider" } } },
+        { name: "size_label", label: "Taille Labels", selector: { number: { min: 7, max: 25, mode: "slider" } } },
         { name: "size_mini", label: "Taille Mini-SOCs", selector: { number: { min: 6, max: 20, mode: "slider" } } },
         { name: "size_device", label: "Taille Texte Appareils", selector: { number: { min: 8, max: 25, mode: "slider" } } }
       ]
@@ -91,12 +91,17 @@ class EnergieCard extends LitElement {
 
     let totalCons = 0;
     const activeDevices = (c.devices || []).map(id => {
-      const s = this.hass.states[id];
-      const val = s ? parseFloat(s.state) || 0 : 0;
+      const stateObj = this.hass.states[id];
+      const val = stateObj ? parseFloat(stateObj.state) || 0 : 0;
       totalCons += val;
-      // RÉTABLISSEMENT DU NOM : Priorité au friendly_name, sinon partie après le point
-      const name = s?.attributes.friendly_name || id.split('.')[1].replace(/_/g, ' ');
-      return { state: val, name: name, icon: s?.attributes.icon };
+      
+      // LOGIQUE DE NOM AMÉLIORÉE
+      let name = "Inconnu";
+      if (stateObj) {
+        name = stateObj.attributes.friendly_name || id.split('.')[1].replace(/_/g, ' ');
+      }
+      
+      return { state: val, name: name, icon: stateObj?.attributes.icon };
     }).filter(d => d.state > 5).sort((a, b) => b.state - a.state);
 
     const netFlux = solar - totalCons;
@@ -114,17 +119,14 @@ class EnergieCard extends LitElement {
         }
     }
 
-    let statusLabel = "PRODUCTION FAIBLE";
     let statusColor = c.accent_color || "#00f9f9";
-    let isWasting = false;
-
-    if (gridPower > 15) { statusLabel = "CONSOMMATION RÉSEAU"; statusColor = "#ff4d4d"; } 
-    else if (solar > totalCons + 10) {
-        statusLabel = "AUTOSUFFISANT (ÉCO)"; statusColor = "#00ff88";
-        if (globalSoc >= 97) { statusLabel = "⚠️ GASPILLAGE : ACTIVEZ UN APPAREIL !"; statusColor = "#ff9500"; isWasting = true; }
+    let statusLabel = "PRODUCTION FAIBLE";
+    if (gridPower > 15) { statusColor = "#ff4d4d"; statusLabel = "CONSOMMATION RÉSEAU"; } 
+    else if (solar > totalCons + 10) { 
+        statusColor = "#00ff88"; statusLabel = "AUTOSUFFISANT (ÉCO)";
+        if (globalSoc >= 97) { statusColor = "#ff9500"; statusLabel = "⚠️ GASPILLAGE : ACTIVEZ UN APPAREIL !"; }
     } 
-    else if (globalSoc > 12) { statusLabel = "SUR BATTERIE (OPTIMAL)"; statusColor = c.accent_color || "#00f9f9"; } 
-    else { statusLabel = "BATTERIES VIDES / RÉSEAU"; statusColor = "#ff4d4d"; }
+    else if (globalSoc > 12) { statusColor = c.accent_color || "#00f9f9"; statusLabel = "SUR BATTERIE (OPTIMAL)"; }
 
     return html`
       <ha-card style="border-color: ${statusColor}88; --status-color: ${statusColor}">
@@ -141,7 +143,6 @@ class EnergieCard extends LitElement {
             <span class="val" style="font-size: ${c.size_val || 24}px">${solar}W</span>
             <span class="label" style="font-size: ${c.size_label || 10}px">SOLAIRE</span>
           </div>
-          
           <div class="stat-box">
             <ha-icon icon="mdi:battery-high" style="color: ${statusColor}"></ha-icon>
             <span class="val" style="font-size: ${c.size_val || 24}px">${globalSoc}%</span>
@@ -150,7 +151,6 @@ class EnergieCard extends LitElement {
                 <span>${Math.round(s1)}%</span><span>${Math.round(s2)}%</span><span>${Math.round(s3)}%</span>
             </div>
           </div>
-          
           <div class="stat-box">
             <ha-icon icon="mdi:home-lightning-bolt" style="color: ${gridPower > 15 ? '#ff4d4d' : '#00ff88'}"></ha-icon>
             <span class="val" style="font-size: ${c.size_val || 24}px">${totalCons}W</span>
@@ -158,8 +158,7 @@ class EnergieCard extends LitElement {
           </div>
         </div>
 
-        <div class="status-bar ${isWasting ? 'wasting' : ''}" style="background: ${statusColor}33">
-            <div class="status-fill" style="width: 100%; background: ${statusColor}"></div>
+        <div class="status-bar" style="background: ${statusColor}33; border: 1px solid ${statusColor}55">
             <span class="status-text">${statusLabel}</span>
         </div>
 
@@ -191,16 +190,13 @@ class EnergieCard extends LitElement {
     .label, .label-cost { color: #888; text-transform: uppercase; font-weight: bold; margin-top: 2px; }
     .label-cost { color: #ff4d4d; }
     .autonomy { color: #aaa; font-style: italic; margin: 2px 0; font-weight: bold; }
-    .status-bar { height: 26px; border-radius: 8px; position: relative; overflow: hidden; margin-bottom: 15px; display: flex; align-items: center; justify-content: center; border: 1px solid #333; }
-    .status-fill { height: 100%; position: absolute; left: 0; opacity: 0.2; }
-    .status-text { position: relative; font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; color: #fff; text-shadow: 1px 1px 2px #000; }
-    .wasting { animation: blink 1s infinite; border: 1px solid #ff9500; }
+    .status-bar { height: 26px; border-radius: 8px; margin-bottom: 15px; display: flex; align-items: center; justify-content: center; }
+    .status-text { font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; color: #fff; text-shadow: 1px 1px 2px #000; }
     .device-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; }
     .device-item { background: #111; padding: 8px; border-radius: 10px; display: flex; align-items: center; gap: 8px; border: 1px solid #222; }
     .dev-val { font-weight: 900; display: block; color: var(--status-color); line-height: 1; }
     .dev-name { color: #777; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: bold; }
     @keyframes pulse { 0% { box-shadow: 0 0 0 0 #ff4d4d44; } 70% { box-shadow: 0 0 0 10px #ff4d4d00; } 100% { box-shadow: 0 0 0 0 #ff4d4d00; } }
-    @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
     ha-icon { --mdc-icon-size: 24px; color: #00f9f9; margin-bottom: 4px; }
     .mini-socs { color: #666; display: flex; justify-content: center; gap: 4px; font-weight: bold; }
     .dimmed { opacity: 0.3; }
