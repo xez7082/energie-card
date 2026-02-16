@@ -45,7 +45,9 @@ class EnergieCardEditor extends LitElement {
           { value: "#ff9500", label: "Ambre" }, { value: "#ff4d4d", label: "Rouge" },
           { value: "#a020f0", label: "Violet" }
         ] } } },
-        { name: "size_title", label: "Taille Titre", selector: { number: { min: 10, max: 30, mode: "slider" } } }
+        { name: "size_title", label: "Taille Titre/Veille", selector: { number: { min: 10, max: 40, unit_of_measurement: "px", mode: "slider" } } },
+        { name: "size_val", label: "Taille Valeurs (W/%)", selector: { number: { min: 15, max: 50, unit_of_measurement: "px", mode: "slider" } } },
+        { name: "size_sub", label: "Taille Sous-labels (€/h, Labels)", selector: { number: { min: 8, max: 20, unit_of_measurement: "px", mode: "slider" } } }
       ]
     ];
 
@@ -98,12 +100,16 @@ class EnergieCard extends LitElement {
     const c = this.config;
     const accent = c.accent_color || "#00f9f9";
     const kwhPrice = parseFloat(c.kwh_price) || 0.22;
+    
+    // Tailles dynamiques
+    const szTitle = c.size_title || 18;
+    const szVal = c.size_val || 24; // Augmenté par défaut
+    const szSub = c.size_sub || 11; // Augmenté par défaut
 
     const solar = Math.round(parseFloat(this.hass.states[c.solar]?.state) || 0);
     const grid = Math.round(parseFloat(this.hass.states[c.linky]?.state) || 0);
     const talon = parseFloat(c.talon) || 150;
     
-    // Batteries
     const s1 = parseFloat(this.hass.states[c.bat1_soc]?.state) || 0;
     const s2 = parseFloat(this.hass.states[c.bat2_soc]?.state) || 0;
     const s3 = parseFloat(this.hass.states[c.bat3_soc]?.state) || 0;
@@ -113,7 +119,6 @@ class EnergieCard extends LitElement {
     const currentWh = (s1/100 * capST) + (s2/100 * capST) + (s3/100 * capMV);
     const globalSoc = Math.round((currentWh / totalCap) * 100) || 0;
 
-    // Consommation et Coût
     const customNamesArr = c.custom_names ? c.custom_names.split(/,|\n/).map(n => n.trim()) : [];
     let totalCons = 0;
     const activeDevices = (c.devices || []).map((id, index) => {
@@ -135,7 +140,7 @@ class EnergieCard extends LitElement {
     return html`
       <ha-card style="border-color: ${statusColor}66">
         <div class="card-header">
-          <span class="title" style="font-size: ${c.size_title || 16}px">
+          <span class="title" style="font-size: ${szTitle}px">
             ${solar < 10 ? '🌙 VEILLE' : (c.title || 'ENERGIE')}
           </span>
           <div class="header-right">
@@ -151,15 +156,15 @@ class EnergieCard extends LitElement {
             ${this._renderSparkline(this._history.solar, '#00ff8844')}
             <div class="flow-icon solar">▼</div>
             <ha-icon icon="mdi:solar-power"></ha-icon>
-            <span class="val">${solar}W</span>
-            <span class="label">SOLAIRE</span>
+            <span class="val" style="font-size: ${szVal}px">${solar}W</span>
+            <span class="label" style="font-size: ${szSub}px">SOLAIRE</span>
           </div>
 
           <div class="stat-box">
             ${this._renderSparkline(this._history.battery, statusColor + '44')}
             <div class="flow-icon battery ${flux >= 0 ? 'up' : 'down'}">${flux >= 0 ? '▲' : '▼'}</div>
             <ha-icon icon="mdi:battery-clock" style="color: ${statusColor}"></ha-icon>
-            <span class="val">${globalSoc}%</span>
+            <span class="val" style="font-size: ${szVal}px">${globalSoc}%</span>
             <div class="mini-socs">
               <span>S1:${Math.round(s1)}%</span><span>S2:${Math.round(s2)}%</span><span>MV:${Math.round(s3)}%</span>
             </div>
@@ -169,8 +174,8 @@ class EnergieCard extends LitElement {
             ${this._renderSparkline(this._history.grid, '#ff4d4d44')}
             <div class="flow-icon home">▲</div>
             <ha-icon icon="mdi:home-lightning-bolt"></ha-icon>
-            <span class="val">${totalCons}W</span>
-            <span class="label-cost">${hourlyCost.toFixed(3)}€/h</span>
+            <span class="val" style="font-size: ${szVal}px">${totalCons}W</span>
+            <span class="label-cost" style="font-size: ${szSub}px">${hourlyCost.toFixed(3)}€/h</span>
           </div>
         </div>
 
@@ -196,7 +201,7 @@ class EnergieCard extends LitElement {
 
   static styles = css`
     ha-card { background: #0a0a0a; border-radius: 20px; padding: 18px; color: #fff; border: 2px solid transparent; overflow: hidden; transition: 0.5s; }
-    .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 22px; }
     .title { font-weight: 900; text-transform: uppercase; letter-spacing: 1px; color: #fff; }
     .header-right { display: flex; align-items: center; gap: 8px; }
     .sobriety-badge { font-weight: 900; font-size: 11px; }
@@ -204,35 +209,35 @@ class EnergieCard extends LitElement {
     .charge { background: #00ff8815; color: #00ff88; border: 1px solid #00ff8844; }
     .discharge { background: #ff4d4d15; color: #ff4d4d; border: 1px solid #ff4d4d44; animation: pulse 2s infinite; }
     
-    .main-stats { display: flex; gap: 10px; margin-bottom: 15px; }
-    .stat-box { background: #141414; padding: 15px 5px; border-radius: 12px; flex: 1; text-align: center; position: relative; border: 1px solid #222; display: flex; flex-direction: column; align-items: center; }
-    .val { font-weight: 900; font-size: 18px; z-index: 1; }
-    .label { font-size: 8px; color: #888; text-transform: uppercase; z-index: 1; }
-    .label-cost { font-size: 10px; color: #ff4d4d; font-weight: bold; z-index: 1; }
+    .main-stats { display: flex; gap: 10px; margin-bottom: 18px; }
+    .stat-box { background: #141414; padding: 18px 5px; border-radius: 12px; flex: 1; text-align: center; position: relative; border: 1px solid #222; display: flex; flex-direction: column; align-items: center; min-height: 100px; justify-content: center; }
+    .val { font-weight: 900; z-index: 1; margin: 4px 0; }
+    .label { color: #888; text-transform: uppercase; z-index: 1; font-weight: bold; }
+    .label-cost { color: #ff4d4d; font-weight: bold; z-index: 1; }
     
-    .flow-icon { position: absolute; font-size: 10px; font-weight: bold; top: 5px; right: 8px; opacity: 0.8; }
+    .flow-icon { position: absolute; font-size: 10px; font-weight: bold; top: 8px; right: 10px; opacity: 0.8; }
     .flow-icon.solar { color: #00ff88; animation: slideDown 1.5s infinite linear; }
     .flow-icon.home { color: #ff4d4d; animation: slideUp 1.5s infinite linear; }
     .flow-icon.battery.up { color: #00ff88; animation: slideUp 1.5s infinite linear; }
     .flow-icon.battery.down { color: #ff4d4d; animation: slideDown 1.5s infinite linear; }
 
-    .mini-socs { font-size: 7px; color: #666; margin-top: 5px; display: flex; justify-content: center; gap: 4px; font-weight: bold; }
-    .sparkline { position: absolute; bottom: 0; left: 0; width: 100%; height: 30px; opacity: 0.3; pointer-events: none; }
-    .sobriety-bar { height: 14px; background: #1a1a1a; border-radius: 6px; position: relative; overflow: hidden; border: 1px solid #333; margin-bottom: 15px; }
+    .mini-socs { font-size: 8px; color: #666; margin-top: 6px; display: flex; justify-content: center; gap: 4px; font-weight: bold; z-index: 1; }
+    .sparkline { position: absolute; bottom: 0; left: 0; width: 100%; height: 35px; opacity: 0.3; pointer-events: none; }
+    .sobriety-bar { height: 16px; background: #1a1a1a; border-radius: 6px; position: relative; overflow: hidden; border: 1px solid #333; margin-bottom: 18px; }
     .sobriety-fill { height: 100%; transition: width 1.2s ease-in-out; }
-    .sobriety-text { position: absolute; width: 100%; text-align: center; top: 1px; font-size: 9px; font-weight: 900; color: #fff; text-shadow: 1px 1px 1px #000; }
+    .sobriety-text { position: absolute; width: 100%; text-align: center; top: 1px; font-size: 10px; font-weight: 900; color: #fff; text-shadow: 1px 1px 1px #000; }
 
-    .device-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; }
-    .device-item { background: #111; padding: 8px; border-radius: 10px; display: flex; align-items: center; gap: 10px; border: 1px solid #222; }
+    .device-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(135px, 1fr)); gap: 10px; }
+    .device-item { background: #111; padding: 10px; border-radius: 10px; display: flex; align-items: center; gap: 10px; border: 1px solid #222; }
     .dev-info { display: flex; flex-direction: column; min-width: 0; }
-    .dev-val { font-weight: 900; font-size: 13px; line-height: 1; }
-    .dev-name { font-size: 8px; color: #777; text-transform: uppercase; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .dev-val { font-weight: 900; font-size: 14px; line-height: 1; }
+    .dev-name { font-size: 9px; color: #777; text-transform: uppercase; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
     @keyframes slideDown { 0% { transform: translateY(-5px); opacity: 0; } 50% { opacity: 1; } 100% { transform: translateY(5px); opacity: 0; } }
     @keyframes slideUp { 0% { transform: translateY(5px); opacity: 0; } 50% { opacity: 1; } 100% { transform: translateY(-5px); opacity: 0; } }
     @keyframes pulse { 0% { box-shadow: 0 0 0 0 #ff4d4d44; } 70% { box-shadow: 0 0 0 10px #ff4d4d00; } 100% { box-shadow: 0 0 0 0 #ff4d4d00; } }
     
-    ha-icon { --mdc-icon-size: 22px; color: #00f9f9; }
+    ha-icon { --mdc-icon-size: 26px; color: #00f9f9; }
     .dimmed { opacity: 0.3; filter: grayscale(1); }
   `;
 }
