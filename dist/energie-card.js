@@ -36,7 +36,7 @@ class EnergieCardEditor extends LitElement {
       ],
       [ 
         { name: "devices", label: "Appareils", selector: { entity: { multiple: true, domain: "sensor" } } },
-        { name: "custom_names", label: "Noms personnalisés (Un par ligne ou virgule)", selector: { text: { multiline: true } } },
+        { name: "custom_names", label: "Noms personnalisés (Un par ligne)", selector: { text: { multiline: true } } },
         { name: "kwh_price", label: "Prix du kWh (€)", selector: { number: { min: 0, max: 1, step: 0.0001, mode: "box" } } }
       ],
       [
@@ -46,7 +46,6 @@ class EnergieCardEditor extends LitElement {
         ] } } },
         { name: "size_title", label: "Taille Titre", selector: { number: { min: 10, max: 40, mode: "slider" } } },
         { name: "size_val", label: "Taille Gros Chiffres", selector: { number: { min: 15, max: 65, mode: "slider" } } },
-        { name: "size_label", label: "Taille Sous-titres (€/h)", selector: { number: { min: 8, max: 25, mode: "slider" } } },
         { name: "size_device", label: "Taille Texte Appareils", selector: { number: { min: 8, max: 25, mode: "slider" } } }
       ]
     ];
@@ -110,7 +109,6 @@ class EnergieCard extends LitElement {
     this._updateHistory('grid', grid);
     this._updateHistory('battery', globalSoc);
 
-    // LOGIQUE DE NOM SIMPLE (Multiline/Virgule)
     const customNamesArr = c.custom_names ? c.custom_names.split(/,|\n/).map(n => n.trim()) : [];
     
     let totalCons = 0;
@@ -125,7 +123,7 @@ class EnergieCard extends LitElement {
       };
     }).filter(d => d.state > 5).sort((a, b) => b.state - a.state);
 
-    const netFlux = solar - totalCons;
+    const flux = solar - totalCons;
     const price = parseFloat(c.kwh_price) || 0.2288;
     const hCost = (totalCons * price) / 1000;
     const hGain = (solar * price) / 1000;
@@ -134,12 +132,12 @@ class EnergieCard extends LitElement {
     const cardStatusColor = c.accent_color || (sobriety > 80 ? "#00ff88" : sobriety < 40 ? "#ff4d4d" : "#00f9f9");
 
     return html`
-      <ha-card style="border-color: ${cardStatusColor}66; --status-color: ${cardStatusColor}">
+      <ha-card style="border-color: ${cardStatusColor}66">
         <div class="card-header">
           <span class="title" style="font-size: ${c.size_title || 11}px">${solar < 10 ? '🌙 VEILLE' : (c.title || 'ENERGIE')}</span>
           <div class="header-right">
              <span class="sobriety-badge" style="color: ${cardStatusColor}">SOBRIÉTÉ: ${Math.round(sobriety)}%</span>
-             <span class="badge ${netFlux >= 0 ? 'charge' : 'discharge'}">${netFlux >= 0 ? '▲ CHARGE' : '▼ DÉCHARGE'}</span>
+             <span class="badge ${flux >= 0 ? 'charge' : 'discharge'}">${flux >= 0 ? '▲ CHARGE' : '▼ DÉCHARGE'}</span>
           </div>
         </div>
 
@@ -148,7 +146,7 @@ class EnergieCard extends LitElement {
             ${this._renderSparkline(this._history.solar, '#00ff8844')}
             <ha-icon icon="mdi:solar-power"></ha-icon>
             <span class="val" style="font-size: ${c.size_val || 17}px">${solar}W</span>
-            <span class="label" style="font-size: ${c.size_label || 9}px; color: #00ff88">+${hGain.toFixed(3)}€/h</span>
+            <span class="label" style="color: #00ff88; font-size: 8px; font-weight: bold;">+${hGain.toFixed(3)}€/h</span>
           </div>
 
           <div class="stat-box">
@@ -164,7 +162,7 @@ class EnergieCard extends LitElement {
             ${this._renderSparkline(this._history.grid, '#ff4d4d44')}
             <ha-icon icon="mdi:home-lightning-bolt"></ha-icon>
             <span class="val" style="font-size: ${c.size_val || 17}px">${totalCons}W</span>
-            <span class="label" style="font-size: ${c.size_label || 9}px; color: #ff4d4d">-${hCost.toFixed(3)}€/h</span>
+            <span class="label" style="color: #ff4d4d; font-size: 8px; font-weight: bold;">-${hCost.toFixed(3)}€/h</span>
           </div>
         </div>
 
@@ -198,7 +196,6 @@ class EnergieCard extends LitElement {
     .main-stats { display: flex; gap: 10px; margin-bottom: 20px; }
     .stat-box { background: #141414; padding: 12px 5px; border-radius: 12px; flex: 1; text-align: center; position: relative; overflow: hidden; display: flex; flex-direction: column; align-items: center; border: 1px solid #222; }
     .val { font-weight: 900; margin: 4px 0; z-index: 1; }
-    .label { font-weight: bold; text-transform: uppercase; z-index: 1; }
     .mini-socs { display: flex; gap: 4px; z-index: 1; margin-top: 2px; }
     .mini-socs span { font-size: 7px; color: #666; font-weight: bold; }
     .sparkline { position: absolute; bottom: 0; left: 0; width: 100%; height: 30px; opacity: 0.4; pointer-events: none; }
