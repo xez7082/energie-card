@@ -41,6 +41,7 @@ class EnergieCardEditor extends LitElement {
       ],
       [ // APPAREILS
         { name: "devices", label: "Appareils à surveiller", selector: { entity: { multiple: true, domain: "sensor" } } },
+        { name: "device_names", label: "Renommer Appareils (ex: id:Nom, id:Nom)", selector: { text: {} } },
         { name: "kwh_price", label: "Prix du kWh (€)", selector: { number: { min: 0, max: 1, step: 0.0001, mode: "box" } } }
       ],
       [ // STYLE
@@ -51,7 +52,6 @@ class EnergieCardEditor extends LitElement {
         { name: "size_title", label: "Taille Titre", selector: { number: { min: 10, max: 40, mode: "slider" } } },
         { name: "size_val", label: "Taille Valeurs (W/%)", selector: { number: { min: 15, max: 60, mode: "slider" } } },
         { name: "size_label", label: "Taille Labels", selector: { number: { min: 7, max: 25, mode: "slider" } } },
-        { name: "size_mini", label: "Taille Mini-SOCs", selector: { number: { min: 6, max: 20, mode: "slider" } } },
         { name: "size_device", label: "Taille Texte Appareils", selector: { number: { min: 8, max: 25, mode: "slider" } } }
       ]
     ];
@@ -89,47 +89,49 @@ class EnergieCard extends LitElement {
     const currentWh = ((s1/100)*capST) + ((s2/100)*capST) + ((s3/100)*capMV);
     const globalSoc = Math.round((currentWh / totalCapWh) * 100) || 0;
 
+    // Parsing du renommage des appareils
+    const customNames = {};
+    if (c.device_names) {
+      c.device_names.split(',').forEach(item => {
+        const [id, name] = item.split(':');
+        if (id && name) customNames[id.trim()] = name.trim();
+      });
+    }
+
     let totalCons = 0;
     const activeDevices = (c.devices || []).map(id => {
       const s = this.hass.states[id];
       const val = s ? parseFloat(s.state) || 0 : 0;
       totalCons += val;
-      return { state: val, name: s?.attributes.friendly_name || id.split('.')[1], icon: s?.attributes.icon };
+      const displayName = customNames[id] || s?.attributes.friendly_name || id.split('.')[1];
+      return { state: val, name: displayName, icon: s?.attributes.icon };
     }).filter(d => d.state > 5).sort((a, b) => b.state - a.state);
 
-    const netFlux = solar - totalCons;
-    const hourlyCost = (totalCons * (c.kwh_price || 0.2288)) / 1000;
+    const price = parseFloat(c.kwh_price) || 0.2288;
+    const hourlyCost = (totalCons * price) / 1000;
+    const hourlyGain = (solar * price) / 1000;
 
-    // COULEURS ET LABELS
     let statusColor = c.accent_color || "#00f9f9";
-    let statusLabel = "PRODUCTION FAIBLE";
-    if (gridPower > 15) { statusColor = "#ff4d4d"; statusLabel = "CONSOMMATION RÉSEAU"; } 
-    else if (solar > totalCons + 10) { 
-        statusColor = "#00ff88"; statusLabel = "AUTOSUFFISANT (ÉCO)";
-        if (globalSoc >= 97) { statusColor = "#ff9500"; statusLabel = "⚠️ GASPILLAGE : ACTIVEZ UN APPAREIL !"; }
-    } 
-    else if (globalSoc > 12) { statusColor = c.accent_color || "#00f9f9"; statusLabel = "SUR BATTERIE (OPTIMAL)"; }
+    if (gridPower > 15) statusColor = "#ff4d4d";
+    else if (solar > totalCons + 10) statusColor = "#00ff88";
 
     return html`
       <ha-card style="border-color: ${statusColor}88; --status-color: ${statusColor}">
         <div class="card-header">
           <span class="title" style="font-size: ${c.size_title || 18}px">${c.title || 'ENERGIE'}</span>
-          <div class="header-right">
-             <span class="badge ${netFlux >= 0 ? 'charge' : 'discharge'}">${netFlux >= 0 ? '▲ CHARGE' : '▼ DÉCHARGE'}</span>
-          </div>
         </div>
 
         <div class="main-stats">
           <div class="stat-box">
             <ha-icon icon="mdi:solar-power"></ha-icon>
             <span class="val" style="font-size: ${c.size_val || 24}px">${solar}W</span>
-            <span class="label" style="font-size: ${c.size_label || 10}px">${c.name_solar || 'SOLAIRE'}</span>
+            <span class="label" style="font-size: ${c.size_label || 10}px">+${hourlyGain.toFixed(3)}€/h</span>
           </div>
           
           <div class="stat-box">
             <ha-icon icon="mdi:battery-high" style="color: ${statusColor}"></ha-icon>
             <span class="val" style="font-size: ${c.size_val || 24}px">${globalSoc}%</span>
-            <div class="mini-socs" style="font-size: ${c.size_mini || 8}px">
+            <div class="mini-socs">
                 <span>${c.name_bat1 || 'S1'}: ${Math.round(s1)}%</span>
                 <span>${c.name_bat2 || 'S2'}: ${Math.round(s2)}%</span>
                 <span>${c.name_bat3 || 'MV'}: ${Math.round(s3)}%</span>
@@ -137,14 +139,10 @@ class EnergieCard extends LitElement {
           </div>
           
           <div class="stat-box">
-            <ha-icon icon="mdi:home-lightning-bolt" style="color: ${gridPower > 15 ? '#ff4d4d' : '#00ff88'}"></ha-icon>
+            <ha-icon icon="mdi:home-lightning-bolt"></ha-icon>
             <span class="val" style="font-size: ${c.size_val || 24}px">${totalCons}W</span>
-            <span class="label-cost" style="font-size: ${c.size_label || 10}px">${c.name_grid || hourlyCost.toFixed(4) + '€/h'}</span>
+            <span class="label-cost" style="font-size: ${c.size_label || 10}px">-${hourlyCost.toFixed(3)}€/h</span>
           </div>
-        </div>
-
-        <div class="status-bar" style="background: ${statusColor}33; border: 1px solid ${statusColor}55">
-            <span class="status-text">${statusLabel}</span>
         </div>
 
         <div class="device-list">
@@ -164,24 +162,19 @@ class EnergieCard extends LitElement {
 
   static styles = css`
     ha-card { background: #0a0a0a; border-radius: 20px; padding: 18px; color: #fff; border: 2px solid transparent; }
-    .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .card-header { margin-bottom: 20px; text-align: center; }
     .title { font-weight: 900; text-transform: uppercase; letter-spacing: 1px; }
-    .badge { padding: 4px 10px; border-radius: 6px; font-weight: 900; font-size: 10px; }
-    .charge { background: #00ff8822; color: #00ff88; }
-    .discharge { background: #ff4d4d22; color: #ff4d4d; animation: pulse 2s infinite; }
     .main-stats { display: flex; gap: 8px; margin-bottom: 15px; }
     .stat-box { background: #141414; padding: 12px 4px; border-radius: 12px; flex: 1; text-align: center; border: 1px solid #222; min-height: 105px; display: flex; flex-direction: column; justify-content: center; }
     .val { font-weight: 900; line-height: 1.1; }
-    .label, .label-cost { color: #888; text-transform: uppercase; font-weight: bold; margin-top: 2px; }
-    .status-bar { height: 26px; border-radius: 8px; margin-bottom: 15px; display: flex; align-items: center; justify-content: center; }
-    .status-text { font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; color: #fff; text-shadow: 1px 1px 2px #000; }
+    .label { color: #00ff88; font-weight: bold; }
+    .label-cost { color: #ff4d4d; font-weight: bold; }
+    .mini-socs { color: #666; font-size: 9px; display: flex; flex-direction: column; margin-top: 5px; font-weight: bold; }
     .device-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; }
     .device-item { background: #111; padding: 8px; border-radius: 10px; display: flex; align-items: center; gap: 8px; border: 1px solid #222; }
-    .dev-val { font-weight: 900; display: block; color: var(--status-color); line-height: 1; }
+    .dev-val { font-weight: 900; color: var(--status-color); }
     .dev-name { color: #777; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: bold; }
-    @keyframes pulse { 0% { box-shadow: 0 0 0 0 #ff4d4d44; } 70% { box-shadow: 0 0 0 10px #ff4d4d00; } 100% { box-shadow: 0 0 0 0 #ff4d4d00; } }
     ha-icon { --mdc-icon-size: 24px; color: #00f9f9; margin-bottom: 4px; }
-    .mini-socs { color: #666; display: flex; flex-direction: column; gap: 1px; font-weight: bold; }
   `;
 }
 
