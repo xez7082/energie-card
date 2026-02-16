@@ -9,7 +9,6 @@ class EnergieCardEditor extends LitElement {
   constructor() { super(); this._tab = 0; }
   setConfig(config) { this._config = config; }
   _selectTab(idx) { this._tab = idx; }
-  
   _valueChanged(ev) {
     if (!this._config || !this.hass) return;
     const event = new CustomEvent("config-changed", {
@@ -22,20 +21,23 @@ class EnergieCardEditor extends LitElement {
 
   render() {
     if (!this.hass || !this._config) return html``;
-
     const schemas = [
       [ // SOURCES
         { name: "title", label: "Titre Dashboard", selector: { text: {} } },
-        { name: "solar", label: "Puissance Solaire (W)", selector: { entity: { domain: "sensor" } } },
-        { name: "linky", label: "Réseau Linky (W)", selector: { entity: { domain: "sensor" } } }
+        { name: "solar", label: "Entité Solaire", selector: { entity: { domain: "sensor" } } },
+        { name: "name_solar", label: "Nom personnalisé Solaire", selector: { text: {} } },
+        { name: "linky", label: "Entité Linky", selector: { entity: { domain: "sensor" } } },
+        { name: "name_grid", label: "Nom personnalisé Réseau", selector: { text: {} } }
       ],
       [ // BATTERIES
-        { name: "bat1_soc", label: "SOC StorCube 1 (%)", selector: { entity: { domain: "sensor" } } },
-        { name: "bat2_soc", label: "SOC StorCube 2 (%)", selector: { entity: { domain: "sensor" } } },
-        { name: "bat3_soc", label: "SOC Marstek Venus (%)", selector: { entity: { domain: "sensor" } } },
-        { name: "cap_st", label: "Capacité réelle StorCube (Wh)", selector: { number: { min: 0, max: 2000, mode: "box" } } },
-        { name: "cap_mv", label: "Capacité réelle Marstek (Wh)", selector: { number: { min: 0, max: 10000, mode: "box" } } },
-        { name: "talon", label: "Talon Électrique (W)", selector: { number: { min: 0, max: 1000, mode: "box" } } }
+        { name: "bat1_soc", label: "SOC StorCube 1", selector: { entity: { domain: "sensor" } } },
+        { name: "name_bat1", label: "Nom Batterie 1", selector: { text: {} } },
+        { name: "bat2_soc", label: "SOC StorCube 2", selector: { entity: { domain: "sensor" } } },
+        { name: "name_bat2", label: "Nom Batterie 2", selector: { text: {} } },
+        { name: "bat3_soc", label: "SOC Marstek Venus", selector: { entity: { domain: "sensor" } } },
+        { name: "name_bat3", label: "Nom Batterie 3", selector: { text: {} } },
+        { name: "cap_st", label: "Capacité StorCube (Wh)", selector: { number: { min: 0, max: 2000, mode: "box" } } },
+        { name: "cap_mv", label: "Capacité Marstek (Wh)", selector: { number: { min: 0, max: 10000, mode: "box" } } }
       ],
       [ // APPAREILS
         { name: "devices", label: "Appareils à surveiller", selector: { entity: { multiple: true, domain: "sensor" } } },
@@ -48,7 +50,6 @@ class EnergieCardEditor extends LitElement {
         ] } } },
         { name: "size_title", label: "Taille Titre", selector: { number: { min: 10, max: 40, mode: "slider" } } },
         { name: "size_val", label: "Taille Valeurs (W/%)", selector: { number: { min: 15, max: 60, mode: "slider" } } },
-        { name: "size_autonomy", label: "Taille Autonomie", selector: { number: { min: 7, max: 25, mode: "slider" } } },
         { name: "size_label", label: "Taille Labels", selector: { number: { min: 7, max: 25, mode: "slider" } } },
         { name: "size_mini", label: "Taille Mini-SOCs", selector: { number: { min: 6, max: 20, mode: "slider" } } },
         { name: "size_device", label: "Taille Texte Appareils", selector: { number: { min: 8, max: 25, mode: "slider" } } }
@@ -61,20 +62,10 @@ class EnergieCardEditor extends LitElement {
           <div class="tab ${this._tab === i ? 'active' : ''}" @click=${() => this._selectTab(i)}>${n}</div>
         `)}
       </div>
-      <ha-form
-        .hass=${this.hass}
-        .data=${this._config}
-        .schema=${schemas[this._tab]}
-        .computeLabel=${(schema) => schema.label}
-        @value-changed=${this._valueChanged}>
-      </ha-form>
+      <ha-form .hass=${this.hass} .data=${this._config} .schema=${schemas[this._tab]} @value-changed=${this._valueChanged}></ha-form>
     `;
   }
-  static styles = css`
-    .tabs { display: flex; gap: 4px; margin-bottom: 20px; flex-wrap: wrap; } 
-    .tab { padding: 10px 4px; background: #2c2c2c; color: #aaa; border-radius: 8px; cursor: pointer; flex: 1; min-width: 70px; text-align: center; font-size: 11px; border: 1px solid #444; } 
-    .tab.active { background: #00f9f9; color: #000; font-weight: bold; border-color: #00f9f9; }
-  `;
+  static styles = css`.tabs { display: flex; gap: 4px; margin-bottom: 20px; flex-wrap: wrap; } .tab { padding: 10px 4px; background: #2c2c2c; color: #aaa; border-radius: 8px; cursor: pointer; flex: 1; min-width: 70px; text-align: center; font-size: 11px; border: 1px solid #444; } .tab.active { background: #00f9f9; color: #000; font-weight: bold; border-color: #00f9f9; }`;
 }
 
 class EnergieCard extends LitElement {
@@ -86,14 +77,12 @@ class EnergieCard extends LitElement {
     if (!this.hass || !this.config) return html``;
     const c = this.config;
     
-    // CAPTEURS
     const solar = Math.round(parseFloat(this.hass.states[c.solar]?.state) || 0);
     const gridPower = Math.round(parseFloat(this.hass.states[c.linky]?.state) || 0);
     const s1 = parseFloat(this.hass.states[c.bat1_soc]?.state) || 0;
     const s2 = parseFloat(this.hass.states[c.bat2_soc]?.state) || 0;
     const s3 = parseFloat(this.hass.states[c.bat3_soc]?.state) || 0;
     
-    // CALCUL CAPACITÉ
     const capST = parseFloat(c.cap_st) || 655;
     const capMV = parseFloat(c.cap_mv) || 4510;
     const totalCapWh = (capST * 2) + capMV;
@@ -102,30 +91,16 @@ class EnergieCard extends LitElement {
 
     let totalCons = 0;
     const activeDevices = (c.devices || []).map(id => {
-      const stateObj = this.hass.states[id];
-      const val = stateObj ? parseFloat(stateObj.state) || 0 : 0;
+      const s = this.hass.states[id];
+      const val = s ? parseFloat(s.state) || 0 : 0;
       totalCons += val;
-      const name = stateObj?.attributes.friendly_name || id.split('.')[1].replace(/_/g, ' ');
-      return { state: val, name: name, icon: stateObj?.attributes.icon };
+      return { state: val, name: s?.attributes.friendly_name || id.split('.')[1], icon: s?.attributes.icon };
     }).filter(d => d.state > 5).sort((a, b) => b.state - a.state);
 
     const netFlux = solar - totalCons;
-    const kwhPrice = parseFloat(c.kwh_price) || 0.2288;
-    const hourlyCost = (totalCons * kwhPrice) / 1000;
+    const hourlyCost = (totalCons * (c.kwh_price || 0.2288)) / 1000;
 
-    // AUTONOMIE
-    let autonomyText = "";
-    if (Math.abs(netFlux) > 20) {
-        if (netFlux < 0 && globalSoc > 5) {
-            const hours = currentWh / Math.abs(netFlux);
-            autonomyText = `Vide: ~${Math.floor(hours)}h${Math.round((hours % 1) * 60)}m`;
-        } else if (netFlux > 0 && globalSoc < 98) {
-            const hours = (totalCapWh - currentWh) / netFlux;
-            autonomyText = `Pleine: ~${Math.floor(hours)}h${Math.round((hours % 1) * 60)}m`;
-        }
-    }
-
-    // STATUS
+    // COULEURS ET LABELS
     let statusColor = c.accent_color || "#00f9f9";
     let statusLabel = "PRODUCTION FAIBLE";
     if (gridPower > 15) { statusColor = "#ff4d4d"; statusLabel = "CONSOMMATION RÉSEAU"; } 
@@ -138,30 +113,33 @@ class EnergieCard extends LitElement {
     return html`
       <ha-card style="border-color: ${statusColor}88; --status-color: ${statusColor}">
         <div class="card-header">
-          <span class="title" style="font-size: ${c.size_title || 18}px">${solar < 10 ? '🌙 VEILLE' : (c.title || 'ENERGIE')}</span>
+          <span class="title" style="font-size: ${c.size_title || 18}px">${c.title || 'ENERGIE'}</span>
           <div class="header-right">
              <span class="badge ${netFlux >= 0 ? 'charge' : 'discharge'}">${netFlux >= 0 ? '▲ CHARGE' : '▼ DÉCHARGE'}</span>
           </div>
         </div>
 
         <div class="main-stats">
-          <div class="stat-box ${solar < 10 ? 'dimmed' : ''}">
+          <div class="stat-box">
             <ha-icon icon="mdi:solar-power"></ha-icon>
             <span class="val" style="font-size: ${c.size_val || 24}px">${solar}W</span>
-            <span class="label" style="font-size: ${c.size_label || 10}px">SOLAIRE</span>
+            <span class="label" style="font-size: ${c.size_label || 10}px">${c.name_solar || 'SOLAIRE'}</span>
           </div>
+          
           <div class="stat-box">
             <ha-icon icon="mdi:battery-high" style="color: ${statusColor}"></ha-icon>
             <span class="val" style="font-size: ${c.size_val || 24}px">${globalSoc}%</span>
-            <div class="autonomy" style="font-size: ${c.size_autonomy || 9}px">${autonomyText}</div>
             <div class="mini-socs" style="font-size: ${c.size_mini || 8}px">
-                <span>${Math.round(s1)}%</span><span>${Math.round(s2)}%</span><span>${Math.round(s3)}%</span>
+                <span>${c.name_bat1 || 'S1'}: ${Math.round(s1)}%</span>
+                <span>${c.name_bat2 || 'S2'}: ${Math.round(s2)}%</span>
+                <span>${c.name_bat3 || 'MV'}: ${Math.round(s3)}%</span>
             </div>
           </div>
+          
           <div class="stat-box">
             <ha-icon icon="mdi:home-lightning-bolt" style="color: ${gridPower > 15 ? '#ff4d4d' : '#00ff88'}"></ha-icon>
             <span class="val" style="font-size: ${c.size_val || 24}px">${totalCons}W</span>
-            <span class="label-cost" style="font-size: ${c.size_label || 10}px">${hourlyCost.toFixed(4)}€/h</span>
+            <span class="label-cost" style="font-size: ${c.size_label || 10}px">${c.name_grid || hourlyCost.toFixed(4) + '€/h'}</span>
           </div>
         </div>
 
@@ -185,7 +163,7 @@ class EnergieCard extends LitElement {
   }
 
   static styles = css`
-    ha-card { background: #0a0a0a; border-radius: 20px; padding: 18px; color: #fff; border: 2px solid transparent; transition: 0.5s; }
+    ha-card { background: #0a0a0a; border-radius: 20px; padding: 18px; color: #fff; border: 2px solid transparent; }
     .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
     .title { font-weight: 900; text-transform: uppercase; letter-spacing: 1px; }
     .badge { padding: 4px 10px; border-radius: 6px; font-weight: 900; font-size: 10px; }
@@ -195,8 +173,6 @@ class EnergieCard extends LitElement {
     .stat-box { background: #141414; padding: 12px 4px; border-radius: 12px; flex: 1; text-align: center; border: 1px solid #222; min-height: 105px; display: flex; flex-direction: column; justify-content: center; }
     .val { font-weight: 900; line-height: 1.1; }
     .label, .label-cost { color: #888; text-transform: uppercase; font-weight: bold; margin-top: 2px; }
-    .label-cost { color: #ff4d4d; }
-    .autonomy { color: #aaa; font-style: italic; margin: 2px 0; font-weight: bold; }
     .status-bar { height: 26px; border-radius: 8px; margin-bottom: 15px; display: flex; align-items: center; justify-content: center; }
     .status-text { font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; color: #fff; text-shadow: 1px 1px 2px #000; }
     .device-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; }
@@ -205,8 +181,7 @@ class EnergieCard extends LitElement {
     .dev-name { color: #777; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: bold; }
     @keyframes pulse { 0% { box-shadow: 0 0 0 0 #ff4d4d44; } 70% { box-shadow: 0 0 0 10px #ff4d4d00; } 100% { box-shadow: 0 0 0 0 #ff4d4d00; } }
     ha-icon { --mdc-icon-size: 24px; color: #00f9f9; margin-bottom: 4px; }
-    .mini-socs { color: #666; display: flex; justify-content: center; gap: 4px; font-weight: bold; }
-    .dimmed { opacity: 0.3; }
+    .mini-socs { color: #666; display: flex; flex-direction: column; gap: 1px; font-weight: bold; }
   `;
 }
 
