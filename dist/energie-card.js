@@ -34,7 +34,7 @@ class EnergieCardEditor extends LitElement {
       ],
       [
         { name: "devices", label: "Appareils à surveiller", selector: { entity: { multiple: true, domain: "sensor" } } },
-        { name: "kwh_price", label: "Prix du kWh (€)", selector: { number: { min: 0, max: 1, step: 0.01, mode: "box" } } },
+        { name: "kwh_price", label: "Prix du kWh (€) - 4 décimales", selector: { number: { min: 0, max: 1, step: 0.0001, mode: "box" } } },
         { name: "size_val", label: "Taille Valeurs (W/%)", selector: { number: { min: 15, max: 50, mode: "slider" } } },
         { name: "size_title", label: "Taille Titre", selector: { number: { min: 10, max: 40, mode: "slider" } } }
       ]
@@ -57,25 +57,15 @@ class EnergieCard extends LitElement {
   constructor() { super(); this._history = { solar: [], battery: [], grid: [] }; }
   setConfig(config) { this.config = config; }
 
-  _renderSparkline(data, color) {
-    if (!data || data.length < 2) return html``;
-    const min = Math.min(...data);
-    const max = Math.max(...data) || 1;
-    const points = data.map((d, i) => `${(i / (data.length - 1)) * 100},${30 - ((d - min) / (max - min || 1)) * 30}`).join(' ');
-    return html`<svg class="sparkline" viewBox="0 0 100 30" preserveAspectRatio="none"><polyline fill="none" stroke="${color}" stroke-width="1.5" points="${points}" /></svg>`;
-  }
-
   render() {
     if (!this.hass || !this.config) return html``;
     const c = this.config;
     const solar = Math.round(parseFloat(this.hass.states[c.solar]?.state) || 0);
-    const grid = Math.round(parseFloat(this.hass.states[c.linky]?.state) || 0);
     const s1 = parseFloat(this.hass.states[c.bat1_soc]?.state) || 0;
     const s2 = parseFloat(this.hass.states[c.bat2_soc]?.state) || 0;
     const s3 = parseFloat(this.hass.states[c.bat3_soc]?.state) || 0;
     const globalSoc = Math.round((s1 + s2 + s3) / 3);
-    const talon = c.talon || 150;
-    const kwhPrice = c.kwh_price || 0.22;
+    const kwhPrice = parseFloat(c.kwh_price) || 0.2288; // Valeur par défaut exemple
 
     let totalCons = 0;
     const activeDevices = (c.devices || []).map(id => {
@@ -88,25 +78,24 @@ class EnergieCard extends LitElement {
     const flux = solar - totalCons;
     const hourlyCost = (totalCons / 1000) * kwhPrice;
 
-    // LOGIQUE ÉCONOMIE VS GASPILLAGE
     let statusLabel = "PRODUCTION FAIBLE";
     let statusColor = "#00f9f9";
     let isWasting = false;
 
     if (solar > totalCons) {
         statusLabel = "AUTOSUFFISANT (ÉCO)";
-        statusColor = "#00ff88"; // Vert
+        statusColor = "#00ff88";
         if (globalSoc >= 98) {
             statusLabel = "⚠️ GASPILLAGE : ACTIVEZ UN APPAREIL !";
-            statusColor = "#ff9500"; // Orange
+            statusColor = "#ff9500";
             isWasting = true;
         }
     } else if (globalSoc > 10) {
         statusLabel = "SUR BATTERIE (OPTIMAL)";
-        statusColor = "#00f9f9"; // Cyan
+        statusColor = "#00f9f9";
     } else {
         statusLabel = "CONSOMMATION RÉSEAU";
-        statusColor = "#ff4d4d"; // Rouge
+        statusColor = "#ff4d4d";
     }
 
     return html`
@@ -132,7 +121,7 @@ class EnergieCard extends LitElement {
           <div class="stat-box">
             <ha-icon icon="mdi:home-lightning-bolt"></ha-icon>
             <span class="val" style="font-size: ${c.size_val || 24}px">${totalCons}W</span>
-            <span class="label-cost">${hourlyCost.toFixed(3)}€/h</span>
+            <span class="label-cost">${hourlyCost.toFixed(4)}€/h</span>
           </div>
         </div>
 
@@ -163,24 +152,19 @@ class EnergieCard extends LitElement {
     .badge { padding: 4px 10px; border-radius: 6px; font-weight: 900; font-size: 10px; }
     .charge { background: #00ff8822; color: #00ff88; }
     .discharge { background: #ff4d4d22; color: #ff4d4d; animation: pulse 2s infinite; }
-    
     .main-stats { display: flex; gap: 10px; margin-bottom: 15px; }
     .stat-box { background: #141414; padding: 15px 5px; border-radius: 12px; flex: 1; text-align: center; border: 1px solid #222; }
     .val { font-weight: 900; display: block; }
     .label { font-size: 10px; color: #888; }
     .label-cost { font-size: 10px; color: #ff4d4d; font-weight: bold; }
-    
     .status-bar { height: 24px; border-radius: 8px; position: relative; overflow: hidden; margin-bottom: 15px; display: flex; align-items: center; justify-content: center; border: 1px solid #333; }
     .status-fill { height: 100%; position: absolute; left: 0; opacity: 0.2; }
     .status-text { position: relative; font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; }
-    
     .wasting { animation: blink 1s infinite; border: 1px solid #ff9500; }
-    
     .device-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; }
     .device-item { background: #111; padding: 8px; border-radius: 10px; display: flex; align-items: center; gap: 10px; border: 1px solid #222; }
     .dev-val { font-weight: 900; font-size: 13px; display: block; color: var(--status-color); }
     .dev-name { font-size: 8px; color: #777; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-
     @keyframes pulse { 0% { box-shadow: 0 0 0 0 #ff4d4d44; } 70% { box-shadow: 0 0 0 10px #ff4d4d00; } 100% { box-shadow: 0 0 0 0 #ff4d4d00; } }
     @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
     ha-icon { --mdc-icon-size: 24px; color: #00f9f9; }
