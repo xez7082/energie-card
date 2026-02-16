@@ -34,7 +34,7 @@ class EnergieCardEditor extends LitElement {
       ],
       [
         { name: "devices", label: "Appareils à surveiller", selector: { entity: { multiple: true, domain: "sensor" } } },
-        { name: "kwh_price", label: "Prix du kWh (€) - 4 décimales", selector: { number: { min: 0, max: 1, step: 0.0001, mode: "box" } } },
+        { name: "kwh_price", label: "Prix du kWh (€)", selector: { number: { min: 0, max: 1, step: 0.0001, mode: "box" } } },
         { name: "size_val", label: "Taille Valeurs (W/%)", selector: { number: { min: 15, max: 50, mode: "slider" } } },
         { name: "size_title", label: "Taille Titre", selector: { number: { min: 10, max: 40, mode: "slider" } } }
       ]
@@ -60,12 +60,16 @@ class EnergieCard extends LitElement {
   render() {
     if (!this.hass || !this.config) return html``;
     const c = this.config;
+    
+    // CAPTEURS
     const solar = Math.round(parseFloat(this.hass.states[c.solar]?.state) || 0);
+    const gridPower = Math.round(parseFloat(this.hass.states[c.linky]?.state) || 0);
     const s1 = parseFloat(this.hass.states[c.bat1_soc]?.state) || 0;
     const s2 = parseFloat(this.hass.states[c.bat2_soc]?.state) || 0;
     const s3 = parseFloat(this.hass.states[c.bat3_soc]?.state) || 0;
+    
     const globalSoc = Math.round((s1 + s2 + s3) / 3);
-    const kwhPrice = parseFloat(c.kwh_price) || 0.2288; // Valeur par défaut exemple
+    const kwhPrice = parseFloat(c.kwh_price) || 0.2288;
 
     let totalCons = 0;
     const activeDevices = (c.devices || []).map(id => {
@@ -76,25 +80,36 @@ class EnergieCard extends LitElement {
     }).filter(d => d.state > 5).sort((a, b) => b.state - a.state);
 
     const flux = solar - totalCons;
-    const hourlyCost = (totalCons / 1000) * kwhPrice;
+    const hourlyCost = (totalCons * kwhPrice) / 1000;
 
+    // LOGIQUE DE DÉTECTION DE SOURCE (LINKY vs BATTERIE)
     let statusLabel = "PRODUCTION FAIBLE";
     let statusColor = "#00f9f9";
     let isWasting = false;
 
-    if (solar > totalCons) {
+    // Si on tire sur le Linky (gridPower > 10W), on est forcément sur le réseau
+    if (gridPower > 15) {
+        statusLabel = "CONSOMMATION RÉSEAU";
+        statusColor = "#ff4d4d"; // Rouge
+    } 
+    // Sinon, si on produit plus qu'on ne consomme
+    else if (solar > totalCons + 10) {
         statusLabel = "AUTOSUFFISANT (ÉCO)";
-        statusColor = "#00ff88";
-        if (globalSoc >= 98) {
+        statusColor = "#00ff88"; // Vert
+        if (globalSoc >= 97) {
             statusLabel = "⚠️ GASPILLAGE : ACTIVEZ UN APPAREIL !";
-            statusColor = "#ff9500";
+            statusColor = "#ff9500"; // Orange
             isWasting = true;
         }
-    } else if (globalSoc > 10) {
+    } 
+    // Sinon, si les batteries sont encore capables de fournir
+    else if (globalSoc > 12) {
         statusLabel = "SUR BATTERIE (OPTIMAL)";
-        statusColor = "#00f9f9";
-    } else {
-        statusLabel = "CONSOMMATION RÉSEAU";
+        statusColor = "#00f9f9"; // Cyan
+    } 
+    // Par défaut (nuit, batteries vides)
+    else {
+        statusLabel = "BATTERIES VIDES / RÉSEAU";
         statusColor = "#ff4d4d";
     }
 
@@ -119,7 +134,7 @@ class EnergieCard extends LitElement {
             <div class="mini-socs"><span>${Math.round(s1)}%</span><span>${Math.round(s2)}%</span><span>${Math.round(s3)}%</span></div>
           </div>
           <div class="stat-box">
-            <ha-icon icon="mdi:home-lightning-bolt"></ha-icon>
+            <ha-icon icon="mdi:home-lightning-bolt" style="color: ${gridPower > 15 ? '#ff4d4d' : '#00ff88'}"></ha-icon>
             <span class="val" style="font-size: ${c.size_val || 24}px">${totalCons}W</span>
             <span class="label-cost">${hourlyCost.toFixed(4)}€/h</span>
           </div>
@@ -159,7 +174,7 @@ class EnergieCard extends LitElement {
     .label-cost { font-size: 10px; color: #ff4d4d; font-weight: bold; }
     .status-bar { height: 24px; border-radius: 8px; position: relative; overflow: hidden; margin-bottom: 15px; display: flex; align-items: center; justify-content: center; border: 1px solid #333; }
     .status-fill { height: 100%; position: absolute; left: 0; opacity: 0.2; }
-    .status-text { position: relative; font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; }
+    .status-text { position: relative; font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; color: #fff; text-shadow: 1px 1px 2px #000; }
     .wasting { animation: blink 1s infinite; border: 1px solid #ff9500; }
     .device-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; }
     .device-item { background: #111; padding: 8px; border-radius: 10px; display: flex; align-items: center; gap: 10px; border: 1px solid #222; }
