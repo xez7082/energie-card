@@ -1,8 +1,9 @@
+// Utilisation d'un import plus flexible pour éviter les conflits Lit v2/v3 vus dans tes logs
 import {
   LitElement,
   html,
   css
-} from "https://unpkg.com/lit-element@2.4.0/lit-element.js?module";
+} from "https://unpkg.com/lit@2.4.0/index.js?module";
 
 class EnergieCardEditor extends LitElement {
   static get properties() { return { hass: {}, _config: {}, _tab: { type: Number } }; }
@@ -21,12 +22,12 @@ class EnergieCardEditor extends LitElement {
   render() {
     if (!this.hass || !this._config) return html``;
     const schemas = [
-      [ // SOURCES
+      [
         { name: "title", label: "Titre Dashboard", selector: { text: {} } },
         { name: "solar", label: "Puissance Solaire (W)", selector: { entity: { domain: "sensor" } } },
         { name: "linky", label: "Réseau Linky (W)", selector: { entity: { domain: "sensor" } } }
       ],
-      [ // BATTERIES
+      [
         { name: "bat1_soc", label: "SOC StorCube 1 (%)", selector: { entity: { domain: "sensor" } } },
         { name: "bat2_soc", label: "SOC StorCube 2 (%)", selector: { entity: { domain: "sensor" } } },
         { name: "bat3_soc", label: "SOC Marstek Venus (%)", selector: { entity: { domain: "sensor" } } },
@@ -34,18 +35,18 @@ class EnergieCardEditor extends LitElement {
         { name: "cap_mv", label: "Capacité réelle Marstek (Wh)", selector: { number: { min: 0, max: 10000, mode: "box" } } },
         { name: "talon", label: "Talon Électrique (W)", selector: { number: { min: 0, max: 1000, mode: "box" } } }
       ],
-      [ // APPAREILS
+      [
         { name: "devices", label: "Appareils", selector: { entity: { multiple: true, domain: "sensor" } } },
         { name: "custom_names", label: "Noms personnalisés (Un par ligne)", selector: { text: { multiline: true } } },
         { name: "kwh_price", label: "Prix du kWh (€)", selector: { number: { min: 0, max: 1, step: 0.0001, mode: "box" } } }
       ],
-      [ // STYLE
+      [
         { name: "accent_color", label: "Couleur d'accentuation", selector: { select: { options: [
           { value: "#00f9f9", label: "Cyan" }, { value: "#00ff88", label: "Vert" },
           { value: "#ff9500", label: "Ambre" }, { value: "#ff4d4d", label: "Rouge" }
         ] } } },
         { name: "size_title", label: "Taille Titre", selector: { number: { min: 8, max: 30, mode: "slider" } } },
-        { name: "size_val", label: "Taille Gros Chiffres (W/%)", selector: { number: { min: 12, max: 50, mode: "slider" } } },
+        { name: "size_val", label: "Taille Gros Chiffres", selector: { number: { min: 12, max: 50, mode: "slider" } } },
         { name: "size_label", label: "Taille Sous-titres", selector: { number: { min: 7, max: 20, mode: "slider" } } },
         { name: "size_device", label: "Taille Texte Appareils", selector: { number: { min: 8, max: 25, mode: "slider" } } }
       ]
