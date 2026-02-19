@@ -1,5 +1,6 @@
 {
   "name": "Energie Card",
-  "render_as_panel": false,
-  "filename": "energie-card.js"
+  "content_type": "plugin",
+  "filename": "energie-card.js",
+  "render_as_panel": false
 }
