@@ -21,12 +21,12 @@ class EnergieCardEditor extends LitElement {
   render() {
     if (!this.hass || !this._config) return html``;
     const schemas = [
-      [
+      [ // SOURCES
         { name: "title", label: "Titre Dashboard", selector: { text: {} } },
         { name: "solar", label: "Puissance Solaire (W)", selector: { entity: { domain: "sensor" } } },
         { name: "linky", label: "Réseau Linky (W)", selector: { entity: { domain: "sensor" } } }
       ],
-      [
+      [ // BATTERIES
         { name: "bat1_soc", label: "SOC StorCube 1 (%)", selector: { entity: { domain: "sensor" } } },
         { name: "bat2_soc", label: "SOC StorCube 2 (%)", selector: { entity: { domain: "sensor" } } },
         { name: "bat3_soc", label: "SOC Marstek Venus (%)", selector: { entity: { domain: "sensor" } } },
@@ -34,12 +34,12 @@ class EnergieCardEditor extends LitElement {
         { name: "cap_mv", label: "Capacité réelle Marstek (Wh)", selector: { number: { min: 0, max: 10000, mode: "box" } } },
         { name: "talon", label: "Talon Électrique (W)", selector: { number: { min: 0, max: 1000, mode: "box" } } }
       ],
-      [
+      [ // APPAREILS
         { name: "devices", label: "Appareils", selector: { entity: { multiple: true, domain: "sensor" } } },
         { name: "custom_names", label: "Noms personnalisés (Un par ligne)", selector: { text: { multiline: true } } },
         { name: "kwh_price", label: "Prix du kWh (€)", selector: { number: { min: 0, max: 1, step: 0.0001, mode: "box" } } }
       ],
-      [
+      [ // STYLE
         { name: "accent_color", label: "Couleur d'accentuation", selector: { select: { options: [
           { value: "#00f9f9", label: "Cyan" }, { value: "#00ff88", label: "Vert" },
           { value: "#ff9500", label: "Ambre" }, { value: "#ff4d4d", label: "Rouge" }
@@ -123,7 +123,7 @@ class EnergieCard extends LitElement {
     this._updateHistory('grid', grid);
     this._updateHistory('battery', globalSoc);
 
-    const customNamesArr = c.custom_names ? c.custom_names.split(/,|\n/).map(n => n.trim()) : [];
+    const customNamesArr = c.custom_names ? c.custom_names.split(/\n/).map(n => n.trim()) : [];
     
     let totalCons = 0;
     const activeDevices = (c.devices || []).map((id, index) => {
