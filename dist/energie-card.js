@@ -1,17 +1,31 @@
-// Utilisation d'un import plus flexible pour éviter les conflits Lit v2/v3 vus dans tes logs
 import {
   LitElement,
   html,
   css
 } from "https://unpkg.com/lit@2.4.0/index.js?module";
 
+/**
+ * EDITEUR DE CONFIGURATION
+ */
 class EnergieCardEditor extends LitElement {
   static get properties() { return { hass: {}, _config: {}, _tab: { type: Number } }; }
-  constructor() { super(); this._tab = 0; }
-  setConfig(config) { this._config = config; }
-  _selectTab(idx) { this._tab = idx; }
+  
+  constructor() { 
+    super(); 
+    this._tab = 0; 
+  }
+
+  setConfig(config) { 
+    this._config = config; 
+  }
+
+  _selectTab(idx) { 
+    this._tab = idx; 
+  }
+
   _valueChanged(ev) {
     if (!this._config || !this.hass) return;
+    const target = ev.target;
     const event = new CustomEvent("config-changed", {
       detail: { config: ev.detail.value },
       bubbles: true,
@@ -19,15 +33,16 @@ class EnergieCardEditor extends LitElement {
     });
     this.dispatchEvent(event);
   }
+
   render() {
     if (!this.hass || !this._config) return html``;
     const schemas = [
-      [
+      [ // SOURCES
         { name: "title", label: "Titre Dashboard", selector: { text: {} } },
         { name: "solar", label: "Puissance Solaire (W)", selector: { entity: { domain: "sensor" } } },
         { name: "linky", label: "Réseau Linky (W)", selector: { entity: { domain: "sensor" } } }
       ],
-      [
+      [ // BATTERIES
         { name: "bat1_soc", label: "SOC StorCube 1 (%)", selector: { entity: { domain: "sensor" } } },
         { name: "bat2_soc", label: "SOC StorCube 2 (%)", selector: { entity: { domain: "sensor" } } },
         { name: "bat3_soc", label: "SOC Marstek Venus (%)", selector: { entity: { domain: "sensor" } } },
@@ -35,12 +50,12 @@ class EnergieCardEditor extends LitElement {
         { name: "cap_mv", label: "Capacité réelle Marstek (Wh)", selector: { number: { min: 0, max: 10000, mode: "box" } } },
         { name: "talon", label: "Talon Électrique (W)", selector: { number: { min: 0, max: 1000, mode: "box" } } }
       ],
-      [
+      [ // APPAREILS
         { name: "devices", label: "Appareils", selector: { entity: { multiple: true, domain: "sensor" } } },
         { name: "custom_names", label: "Noms personnalisés (Un par ligne)", selector: { text: { multiline: true } } },
         { name: "kwh_price", label: "Prix du kWh (€)", selector: { number: { min: 0, max: 1, step: 0.0001, mode: "box" } } }
       ],
-      [
+      [ // STYLE
         { name: "accent_color", label: "Couleur d'accentuation", selector: { select: { options: [
           { value: "#00f9f9", label: "Cyan" }, { value: "#00ff88", label: "Vert" },
           { value: "#ff9500", label: "Ambre" }, { value: "#ff4d4d", label: "Rouge" }
@@ -62,16 +77,26 @@ class EnergieCardEditor extends LitElement {
   }
   static styles = css`
     .tabs { display: flex; gap: 8px; margin-bottom: 20px; }
-    .tab { padding: 8px 12px; background: #2c2c2c; color: #aaa; border-radius: 8px; cursor: pointer; font-size: 11px; border: 1px solid #444; flex: 1; text-align: center; }
+    .tab { padding: 8px 12px; background: #2c2c2c; color: #aaa; border-radius: 8px; cursor: pointer; font-size: 11px; border: 1px solid #444; flex: 1; text-align: center; transition: 0.3s; }
     .tab.active { background: #00f9f9; color: #000; font-weight: bold; border-color: #00f9f9; }
   `;
 }
 
+/**
+ * CARTE PRINCIPALE
+ */
 class EnergieCard extends LitElement {
   static getConfigElement() { return document.createElement("energie-card-editor"); }
   static get properties() { return { hass: {}, config: {}, _history: { type: Object } }; }
-  constructor() { super(); this._history = { solar: [], battery: [], grid: [] }; }
-  setConfig(config) { this.config = config; }
+  
+  constructor() { 
+    super(); 
+    this._history = { solar: [], battery: [], grid: [] }; 
+  }
+  
+  setConfig(config) { 
+    this.config = config; 
+  }
 
   _renderSparkline(data, color) {
     if (!data || data.length < 2) return html``;
@@ -230,5 +255,15 @@ class EnergieCard extends LitElement {
   `;
 }
 
+// Enregistrement des éléments
 customElements.define("energie-card-editor", EnergieCardEditor);
 customElements.define("energie-card", EnergieCard);
+
+// Ajout de la carte à la liste de sélection de Home Assistant (nécessaire pour HACS)
+window.customCards = window.customCards || [];
+window.customCards.push({
+  type: "energie-card",
+  name: "Energie Card",
+  preview: true,
+  description: "Carte énergie optimisée pour StorCube et Marstek"
+});
