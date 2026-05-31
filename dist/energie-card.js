@@ -24,12 +24,37 @@ class EnergieCardEditor extends LitElement {
 
   _valueChanged(ev) {
     if (!this._config || !this.hass) return;
+    this._fireConfigChanged(ev.detail.value);
+  }
+
+  _fireConfigChanged(newConfig) {
     const event = new CustomEvent("config-changed", {
-      detail: { config: ev.detail.value },
+      detail: { config: newConfig },
       bubbles: true,
       composed: true,
     });
     this.dispatchEvent(event);
+  }
+
+  /**
+   * INJECTION DE VOS APPAREILS AU CLIC
+   */
+  _injectVotreListe() {
+    if (!this._config) return;
+    
+    const maListe = 
+`Lave-linge | 1400 | mdi:washing-machine
+Lave-vaisselle | 1200 | mdi:dishwasher
+Four principal | 2400 | mdi:oven
+Spa Chauffage | 2000 | mdi:hot-tub`;
+
+    const updatedConfig = {
+      ...this._config,
+      rec_appliances: maListe
+    };
+
+    this._config = updatedConfig;
+    this._fireConfigChanged(updatedConfig);
   }
 
   render() {
@@ -48,7 +73,7 @@ class EnergieCardEditor extends LitElement {
         { name: "cap_mv", label: "Capacité réelle Marstek (Wh)", selector: { number: { min: 0, max: 10000, mode: "box" } } },
         { name: "talon", label: "Talon Électrique (W)", selector: { number: { min: 0, max: 1000, mode: "box" } } }
       ],
-      [ // APPAREILS & MULTI-MACHINES
+      [ // APPAREILS
         { name: "devices", label: "Appareils", selector: { entity: { multiple: true, domain: "sensor" } } },
         { name: "custom_names", label: "Noms personnalisés (Un par ligne)", selector: { text: { multiline: true } } },
         { name: "kwh_price", label: "Prix du kWh (€)", selector: { number: { min: 0, max: 1, step: 0.0001, mode: "box" } } },
@@ -72,6 +97,15 @@ class EnergieCardEditor extends LitElement {
         `)}
       </div>
       <ha-form .hass=${this.hass} .data=${this._config} .schema=${schemas[this._tab]} @value-changed=${this._valueChanged}></ha-form>
+      
+      ${this._tab === 2 ? html`
+        <div class="editor-actions">
+          <mwc-button raised @click=${this._injectVotreListe}>
+            <ha-icon icon="mdi:playlist-plus" style="--mdc-icon-size: 18px; margin-right: 6px; color: #000;"></ha-icon>
+            Appliquer vos appareils principaux
+          </mwc-button>
+        </div>
+      ` : html``}
     `;
   }
   
@@ -80,6 +114,8 @@ class EnergieCardEditor extends LitElement {
       .tabs { display: flex; gap: 8px; margin-bottom: 20px; }
       .tab { padding: 8px 12px; background: #2c2c2c; color: #aaa; border-radius: 8px; cursor: pointer; font-size: 11px; border: 1px solid #444; flex: 1; text-align: center; transition: 0.3s; }
       .tab.active { background: #00f9f9; color: #000; font-weight: bold; border-color: #00f9f9; }
+      .editor-actions { margin-top: 16px; display: flex; justify-content: flex-start; }
+      mwc-button { --mdc-theme-primary: #00f9f9; --mdc-theme-on-primary: #000; font-weight: bold; font-size: 12px; border-radius: 6px; }
     `;
   }
 }
@@ -215,11 +251,10 @@ class EnergieCard extends LitElement {
     const baseTitle = solar < 10 ? '🌙 VEILLE' : (c.title || 'ENERGIE');
     const fullTitle = alertCount > 0 ? `${baseTitle} [${alertCount} PANNE${alertCount > 1 ? 'S' : ''}]` : baseTitle;
 
-    // --- LOGIQUE MULTI-MACHINES INTELLIGENTE ---
+    // --- LOGIQUE MULTI-MACHINES ---
     let recommendationHTML = html``;
     
     if (c.rec_appliances) {
-      // Extraction et nettoyage de la liste
       const lines = c.rec_appliances.split('\n').map(l => l.trim()).filter(l => l.includes('|'));
       const appliances = lines.map(line => {
         const parts = line.split('|').map(p => p.trim());
@@ -231,7 +266,6 @@ class EnergieCard extends LitElement {
       });
 
       if (appliances.length > 0) {
-        // Séparer les machines "prêtes" de celles "en attente"
         const readyDevices = appliances.filter(a => currentSurplus >= a.watts).sort((a, b) => b.watts - a.watts);
         const waitingDevices = appliances.filter(a => currentSurplus < a.watts).sort((a, b) => (a.watts - currentSurplus) - (b.watts - currentSurplus));
 
@@ -240,11 +274,9 @@ class EnergieCard extends LitElement {
         let diffWatts = 0;
 
         if (readyDevices.length > 0) {
-          // On prend la machine qui consomme le plus parmi celles qui rentrent dans le surplus
           bestChoice = readyDevices[0];
           isReady = true;
         } else if (waitingDevices.length > 0) {
-          // Sinon, on prend celle dont on est le plus proche d'alimenter
           bestChoice = waitingDevices[0];
           diffWatts = bestChoice.watts - currentSurplus;
         }
@@ -344,7 +376,6 @@ class EnergieCard extends LitElement {
       .sobriety-fill { height: 100%; transition: width 1.5s ease; }
       .sobriety-text { position: absolute; width: 100%; text-align: center; top: 1px; font-size: 8px; font-weight: 900; }
       
-      /* STYLES ZONE RECOMMANDATION MULTIPLE */
       .recommendation-box { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 10px; font-size: 11px; margin-bottom: 20px; border: 1px solid transparent; transition: 0.4s ease; }
       .rec-ready { background: #00ff8810; border-color: #00ff8833; color: #88ffcc; }
       .rec-ready ha-icon { color: #00ff88 !important; }
@@ -364,7 +395,6 @@ class EnergieCard extends LitElement {
       .charge { background: #00ff8815; color: #00ff88; }
       .discharge { background: #ff4d4d15; color: #ff4d4d; animation: pulse 2s infinite; }
       
-      /* ANIMATIONS */
       @keyframes pulse { 0% { box-shadow: 0 0 0 0 #ff4d4d44; } 70% { box-shadow: 0 0 0 10px #ff4d4d00; } 100% { box-shadow: 0 0 0 0 #ff4d4d00; } }
       @keyframes alertPulse { 0% { border-color: #ff4d4d44; } 50% { border-color: #ff4d4dff; } 100% { border-color: #ff4d4d44; } }
       @keyframes textPulse { 0% { opacity: 0.7; } 50% { opacity: 1; } 100% { opacity: 0.7; } }
@@ -387,6 +417,6 @@ if (!customElements.get("energie-card")) {
     type: "energie-card",
     name: "Energie Card",
     preview: true,
-    description: "Carte énergie avec gestion d'alertes et sélecteur d'électroménager intelligent."
+    description: "Carte énergie avancée avec bouton d'importation d'appareils."
   });
 }
