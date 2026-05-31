@@ -164,6 +164,7 @@ class EnergieCard extends LitElement {
       
       let val = 0;
       let isAlert = isUnavailable || isUnknown;
+      let shouldHide = false;
       let alertLabel = '';
 
       if (isUnavailable) {
@@ -177,12 +178,11 @@ class EnergieCard extends LitElement {
           isAlert = true;
           alertLabel = 'ERREUR';
         } else if (val <= 5) {
-          isAlert = true;
-          alertLabel = 'ARRÊT';
+          shouldHide = true; // Flag pour masquer l'appareil s'il consomme moins de 5W
         }
       }
 
-      if (isAlert && alertLabel !== 'ARRÊT') alertCount++;
+      if (isAlert) alertCount++;
       totalCons += val;
 
       const backupName = id && id.split('.')[1] ? id.split('.')[1].replace(/_/g, ' ') : 'Appareil Inconnu';
@@ -191,11 +191,13 @@ class EnergieCard extends LitElement {
         state: val, 
         stateObj: s,
         isAlert: isAlert,
+        shouldHide: shouldHide,
         alertType: alertLabel,
         name: customNamesArr[index] || (s?.attributes?.friendly_name || backupName) 
       };
-    }).sort((a, b) => {
-      // Les alertes et appareils arrêtés descendent tout en bas de la grille
+    })
+    .filter(d => !d.shouldHide) // Supprime définitivement les appareils à l'arrêt (<= 5W) de la liste d'affichage
+    .sort((a, b) => {
       if (a.isAlert && !b.isAlert) return 1;
       if (!a.isAlert && b.isAlert) return -1;
       return b.state - a.state;
@@ -257,10 +259,10 @@ class EnergieCard extends LitElement {
 
         <div class="device-list">
           ${activeDevices.map(d => html`
-            <div class="device-item ${d.isAlert && d.alertType !== 'ARRÊT' ? 'device-alert' : ''}" style="border-left: 3px solid ${d.isAlert ? (d.alertType === 'ARRÊT' ? '#444' : '#ff4d4d') : this._getPowerColor(d.state)}">
-              <ha-icon icon="${d.isAlert && d.alertType !== 'ARRÊT' ? 'mdi:alert-circle' : (d.stateObj?.attributes?.icon || 'mdi:flash')}" style="color: ${d.isAlert ? (d.alertType === 'ARRÊT' ? '#555' : '#ff4d4d') : this._getPowerColor(d.state)}"></ha-icon>
+            <div class="device-item ${d.isAlert ? 'device-alert' : ''}" style="border-left: 3px solid ${d.isAlert ? '#ff4d4d' : this._getPowerColor(d.state)}">
+              <ha-icon icon="${d.isAlert ? 'mdi:alert-circle' : (d.stateObj?.attributes?.icon || 'mdi:flash')}" style="color: ${d.isAlert ? '#ff4d4d' : this._getPowerColor(d.state)}"></ha-icon>
               <div class="dev-info">
-                 <span class="dev-val" style="color: ${d.isAlert ? (d.alertType === 'ARRÊT' ? '#666' : '#ff4d4d') : this._getPowerColor(d.state)}; font-size: ${c.size_device || 14}px">
+                 <span class="dev-val" style="color: ${d.isAlert ? '#ff4d4d' : this._getPowerColor(d.state)}; font-size: ${c.size_device || 14}px">
                    ${d.isAlert ? d.alertType : `${Math.round(d.state)}W`}
                  </span>
                  <span class="dev-name" style="font-size: ${(c.size_device || 14) * 0.65}px">${d.name}</span>
@@ -316,6 +318,6 @@ if (!customElements.get("energie-card")) {
     type: "energie-card",
     name: "Energie Card",
     preview: true,
-    description: "Carte énergie optimisée avec gestion de pannes."
+    description: "Carte énergie optimisée avec masquage automatique des arrêts."
   });
 }
