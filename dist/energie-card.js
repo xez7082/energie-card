@@ -48,13 +48,11 @@ class EnergieCardEditor extends LitElement {
         { name: "cap_mv", label: "Capacité réelle Marstek (Wh)", selector: { number: { min: 0, max: 10000, mode: "box" } } },
         { name: "talon", label: "Talon Électrique (W)", selector: { number: { min: 0, max: 1000, mode: "box" } } }
       ],
-      [ // APPAREILS & RECOMMANDATION
+      [ // APPAREILS & MULTI-MACHINES
         { name: "devices", label: "Appareils", selector: { entity: { multiple: true, domain: "sensor" } } },
         { name: "custom_names", label: "Noms personnalisés (Un par ligne)", selector: { text: { multiline: true } } },
         { name: "kwh_price", label: "Prix du kWh (€)", selector: { number: { min: 0, max: 1, step: 0.0001, mode: "box" } } },
-        { name: "rec_device_name", label: "Nom du gros appareil à conseiller", selector: { text: {} } },
-        { name: "rec_device_watts", label: "Puissance de cet appareil (W)", selector: { number: { min: 0, max: 4000, mode: "box" } } },
-        { name: "rec_device_icon", label: "Icône MDI (ex: mdi:washing-machine)", selector: { text: {} } }
+        { name: "rec_appliances", label: "Liste des Électroménagers (Format: Nom | Watts | Icône)", selector: { text: { multiline: true } } }
       ],
       [ // STYLE
         { name: "accent_color", label: "Couleur d'accentuation", selector: { select: { options: [
@@ -206,7 +204,7 @@ class EnergieCard extends LitElement {
       return b.state - a.state;
     });
 
-    const netFlux = solar - totalCons;
+    const currentSurplus = solar - totalCons;
     const price = parseFloat(c.kwh_price) || 0.2288;
     const hCost = (totalCons * price) / 1000;
     const hGain = (solar * price) / 1000;
@@ -217,15 +215,55 @@ class EnergieCard extends LitElement {
     const baseTitle = solar < 10 ? '🌙 VEILLE' : (c.title || 'ENERGIE');
     const fullTitle = alertCount > 0 ? `${baseTitle} [${alertCount} PANNE${alertCount > 1 ? 'S' : ''}]` : baseTitle;
 
-    // --- LOGIQUE CALCULATEUR INTELLIGENT ---
-    const recDeviceName = c.rec_device_name || "Gros Appareil";
-    const recDeviceWatts = parseFloat(c.rec_device_watts) || 1500;
-    const recDeviceIcon = c.rec_device_icon || "mdi:washing-machine";
+    // --- LOGIQUE MULTI-MACHINES INTELLIGENTE ---
+    let recommendationHTML = html``;
     
-    // Le surplus réel disponible avant d'importer du réseau
-    const currentSurplus = solar - totalCons;
-    const isReadyForDevice = currentSurplus >= recDeviceWatts;
-    const powerDeficit = recDeviceWatts - currentSurplus;
+    if (c.rec_appliances) {
+      // Extraction et nettoyage de la liste
+      const lines = c.rec_appliances.split('\n').map(l => l.trim()).filter(l => l.includes('|'));
+      const appliances = lines.map(line => {
+        const parts = line.split('|').map(p => p.trim());
+        return {
+          name: parts[0],
+          watts: parseFloat(parts[1]) || 1000,
+          icon: parts[2] || "mdi:flash"
+        };
+      });
+
+      if (appliances.length > 0) {
+        // Séparer les machines "prêtes" de celles "en attente"
+        const readyDevices = appliances.filter(a => currentSurplus >= a.watts).sort((a, b) => b.watts - a.watts);
+        const waitingDevices = appliances.filter(a => currentSurplus < a.watts).sort((a, b) => (a.watts - currentSurplus) - (b.watts - currentSurplus));
+
+        let bestChoice = null;
+        let isReady = false;
+        let diffWatts = 0;
+
+        if (readyDevices.length > 0) {
+          // On prend la machine qui consomme le plus parmi celles qui rentrent dans le surplus
+          bestChoice = readyDevices[0];
+          isReady = true;
+        } else if (waitingDevices.length > 0) {
+          // Sinon, on prend celle dont on est le plus proche d'alimenter
+          bestChoice = waitingDevices[0];
+          diffWatts = bestChoice.watts - currentSurplus;
+        }
+
+        if (bestChoice) {
+          recommendationHTML = html`
+            <div class="recommendation-box ${isReady ? 'rec-ready' : 'rec-waiting'}">
+              <ha-icon icon="${bestChoice.icon}" class="${isReady ? 'icon-bounce' : ''}"></ha-icon>
+              <div class="rec-text">
+                ${isReady 
+                  ? html`<strong>DISPO (+${currentSurplus}W) :</strong> Vous pouvez lancer le <span>${bestChoice.name}</span> (${bestChoice.watts}W)`
+                  : html`<strong>CONSEIL :</strong> Encore <span>+${Math.round(diffWatts)}W</span> de soleil pour lancer le ${bestChoice.name}`
+                }
+              </div>
+            </div>
+          `;
+        }
+      }
+    }
 
     return html`
       <ha-card style="border-color: ${cardStatusColor}66">
@@ -235,7 +273,7 @@ class EnergieCard extends LitElement {
           </span>
           <div class="header-right">
              <span class="sobriety-badge" style="color: ${cardStatusColor}">SOBRIÉTÉ: ${Math.round(sobriety)}%</span>
-             <span class="badge ${netFlux >= 0 ? 'charge' : 'discharge'}">${netFlux >= 0 ? '▲ CHARGE' : '▼ DÉCHARGE'}</span>
+             <span class="badge ${currentSurplus >= 0 ? 'charge' : 'discharge'}">${currentSurplus >= 0 ? '▲ CHARGE' : '▼ DÉCHARGE'}</span>
           </div>
         </div>
 
@@ -251,7 +289,7 @@ class EnergieCard extends LitElement {
             ${this._renderSparkline(this._history.battery, cardStatusColor + '44')}
             <ha-icon icon="mdi:battery-clock" style="color: ${cardStatusColor}"></ha-icon>
             <span class="val" style="font-size: ${c.size_val || 17}px">${globalSoc}%</span>
-            <span class="label-time" style="font-size: ${c.size_label || 9}px; color: #00f9f9; font-weight: bold; z-index: 1;">${this._calculateAutonomy(globalSoc, netFlux, totalCapWh)}</span>
+            <span class="label-time" style="font-size: ${c.size_label || 9}px; color: #00f9f9; font-weight: bold; z-index: 1;">${this._calculateAutonomy(globalSoc, currentSurplus, totalCapWh)}</span>
             <div class="mini-socs">
               <span>S1:${Math.round(s1)}%</span><span>S2:${Math.round(s2)}%</span><span>MV:${Math.round(s3)}%</span>
             </div>
@@ -270,15 +308,7 @@ class EnergieCard extends LitElement {
            <span class="sobriety-text">${totalCons <= talon ? 'TALON ATTEINT' : `SURPLUS: +${Math.max(0, currentSurplus)}W`}</span>
         </div>
 
-        <div class="recommendation-box ${isReadyForDevice ? 'rec-ready' : 'rec-waiting'}">
-          <ha-icon icon="${recDeviceIcon}" class="${isReadyForDevice ? 'icon-bounce' : ''}"></ha-icon>
-          <div class="rec-text">
-            ${isReadyForDevice 
-              ? html`<strong>PROD. OPTIMALE :</strong> Prêt pour lancer le <span>${recDeviceName}</span> (+${currentSurplus}W libres)`
-              : html`<strong>CONSEIL :</strong> Manque <span>${Math.round(powerDeficit)}W</span> pour lancer le ${recDeviceName}`
-            }
-          </div>
-        </div>
+        ${recommendationHTML}
 
         <div class="device-list">
           ${activeDevices.map(d => html`
@@ -314,7 +344,7 @@ class EnergieCard extends LitElement {
       .sobriety-fill { height: 100%; transition: width 1.5s ease; }
       .sobriety-text { position: absolute; width: 100%; text-align: center; top: 1px; font-size: 8px; font-weight: 900; }
       
-      /* STYLES ZONE RECOMMANDATION */
+      /* STYLES ZONE RECOMMANDATION MULTIPLE */
       .recommendation-box { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 10px; font-size: 11px; margin-bottom: 20px; border: 1px solid transparent; transition: 0.4s ease; }
       .rec-ready { background: #00ff8810; border-color: #00ff8833; color: #88ffcc; }
       .rec-ready ha-icon { color: #00ff88 !important; }
@@ -357,6 +387,6 @@ if (!customElements.get("energie-card")) {
     type: "energie-card",
     name: "Energie Card",
     preview: true,
-    description: "Carte énergie avec gestion d'alertes et conseil d'autoconsommation."
+    description: "Carte énergie avec gestion d'alertes et sélecteur d'électroménager intelligent."
   });
 }
