@@ -1,8 +1,7 @@
-import {
-  LitElement,
-  html,
-  css
-} from "https://unpkg.com/lit@2.4.0/index.js?module";
+// Récupération de Lit directement depuis le noyau de Home Assistant pour éviter les blocages réseau
+const LitElement = Object.getPrototypeOf(customElements.get("ha-panel-lovelace"));
+const html = LitElement.prototype.html;
+const css = LitElement.prototype.css;
 
 /**
  * EDITEUR DE CONFIGURATION
@@ -25,7 +24,6 @@ class EnergieCardEditor extends LitElement {
 
   _valueChanged(ev) {
     if (!this._config || !this.hass) return;
-    const target = ev.target;
     const event = new CustomEvent("config-changed", {
       detail: { config: ev.detail.value },
       bubbles: true,
@@ -75,11 +73,14 @@ class EnergieCardEditor extends LitElement {
       <ha-form .hass=${this.hass} .data=${this._config} .schema=${schemas[this._tab]} @value-changed=${this._valueChanged}></ha-form>
     `;
   }
-  static styles = css`
-    .tabs { display: flex; gap: 8px; margin-bottom: 20px; }
-    .tab { padding: 8px 12px; background: #2c2c2c; color: #aaa; border-radius: 8px; cursor: pointer; font-size: 11px; border: 1px solid #444; flex: 1; text-align: center; transition: 0.3s; }
-    .tab.active { background: #00f9f9; color: #000; font-weight: bold; border-color: #00f9f9; }
-  `;
+  
+  static get styles() {
+    return css`
+      .tabs { display: flex; gap: 8px; margin-bottom: 20px; }
+      .tab { padding: 8px 12px; background: #2c2c2c; color: #aaa; border-radius: 8px; cursor: pointer; font-size: 11px; border: 1px solid #444; flex: 1; text-align: center; transition: 0.3s; }
+      .tab.active { background: #00f9f9; color: #000; font-weight: bold; border-color: #00f9f9; }
+    `;
+  }
 }
 
 /**
@@ -152,16 +153,53 @@ class EnergieCard extends LitElement {
     const customNamesArr = c.custom_names ? c.custom_names.split(/\n/).map(n => n.trim()) : [];
     
     let totalCons = 0;
+    let alertCount = 0;
+
     const activeDevices = (c.devices || []).map((id, index) => {
       const s = this.hass.states[id];
-      const val = s ? parseFloat(s.state) || 0 : 0;
+      let rawState = s ? String(s.state).toLowerCase().trim() : 'unavailable';
+      
+      const isUnavailable = rawState === 'unavailable' || !s;
+      const isUnknown = rawState === 'unknown' || rawState === 'none' || rawState === 'null' || rawState === 'undefined';
+      
+      let val = 0;
+      let isAlert = isUnavailable || isUnknown;
+      let alertLabel = '';
+
+      if (isUnavailable) {
+        alertLabel = 'HORS-LIGNE';
+      } else if (isUnknown) {
+        alertLabel = 'INCONNU';
+      } else {
+        val = parseFloat(rawState);
+        if (isNaN(val)) {
+          val = 0;
+          isAlert = true;
+          alertLabel = 'ERREUR';
+        } else if (val <= 5) {
+          isAlert = true;
+          alertLabel = 'ARRÊT';
+        }
+      }
+
+      if (isAlert && alertLabel !== 'ARRÊT') alertCount++;
       totalCons += val;
+
+      const backupName = id && id.split('.')[1] ? id.split('.')[1].replace(/_/g, ' ') : 'Appareil Inconnu';
+
       return { 
         state: val, 
-        stateObj: s, 
-        name: customNamesArr[index] || (s?.attributes.friendly_name || id.split('.')[1].replace(/_/g, ' ')) 
+        stateObj: s,
+        isAlert: isAlert,
+        alertType: alertLabel,
+        name: customNamesArr[index] || (s?.attributes?.friendly_name || backupName) 
       };
-    }).filter(d => d.state > 5).sort((a, b) => b.state - a.state);
+    }).sort((a, b) => {
+      // Les alertes et appareils arrêtés descendent tout en bas de la grille
+      if (a.isAlert && !b.isAlert) return 1;
+      if (!a.isAlert && b.isAlert) return -1;
+      return b.state - a.state;
+    });
 
     const netFlux = solar - totalCons;
     const price = parseFloat(c.kwh_price) || 0.2288;
@@ -171,10 +209,15 @@ class EnergieCard extends LitElement {
     const sobriety = Math.min(100, Math.max(0, 100 - ((totalCons - talon) / (talon * 4) * 100)));
     const cardStatusColor = c.accent_color || (sobriety > 80 ? "#00ff88" : sobriety < 40 ? "#ff4d4d" : "#00f9f9");
 
+    const baseTitle = solar < 10 ? '🌙 VEILLE' : (c.title || 'ENERGIE');
+    const fullTitle = alertCount > 0 ? `${baseTitle} [${alertCount} PANNE${alertCount > 1 ? 'S' : ''}]` : baseTitle;
+
     return html`
       <ha-card style="border-color: ${cardStatusColor}66">
         <div class="card-header">
-          <span class="title" style="font-size: ${c.size_title || 11}px">${solar < 10 ? '🌙 VEILLE' : (c.title || 'ENERGIE')}</span>
+          <span class="title ${alertCount > 0 ? 'title-alert' : ''}" style="font-size: ${c.size_title || 11}px">
+            ${fullTitle}
+          </span>
           <div class="header-right">
              <span class="sobriety-badge" style="color: ${cardStatusColor}">SOBRIÉTÉ: ${Math.round(sobriety)}%</span>
              <span class="badge ${netFlux >= 0 ? 'charge' : 'discharge'}">${netFlux >= 0 ? '▲ CHARGE' : '▼ DÉCHARGE'}</span>
@@ -214,10 +257,12 @@ class EnergieCard extends LitElement {
 
         <div class="device-list">
           ${activeDevices.map(d => html`
-            <div class="device-item" style="border-left: 3px solid ${this._getPowerColor(d.state)}">
-              <ha-icon icon="${d.stateObj?.attributes.icon || 'mdi:flash'}" style="color: ${this._getPowerColor(d.state)}"></ha-icon>
+            <div class="device-item ${d.isAlert && d.alertType !== 'ARRÊT' ? 'device-alert' : ''}" style="border-left: 3px solid ${d.isAlert ? (d.alertType === 'ARRÊT' ? '#444' : '#ff4d4d') : this._getPowerColor(d.state)}">
+              <ha-icon icon="${d.isAlert && d.alertType !== 'ARRÊT' ? 'mdi:alert-circle' : (d.stateObj?.attributes?.icon || 'mdi:flash')}" style="color: ${d.isAlert ? (d.alertType === 'ARRÊT' ? '#555' : '#ff4d4d') : this._getPowerColor(d.state)}"></ha-icon>
               <div class="dev-info">
-                 <span class="dev-val" style="color: ${this._getPowerColor(d.state)}; font-size: ${c.size_device || 14}px">${Math.round(d.state)}W</span>
+                 <span class="dev-val" style="color: ${d.isAlert ? (d.alertType === 'ARRÊT' ? '#666' : '#ff4d4d') : this._getPowerColor(d.state)}; font-size: ${c.size_device || 14}px">
+                   ${d.isAlert ? d.alertType : `${Math.round(d.state)}W`}
+                 </span>
                  <span class="dev-name" style="font-size: ${(c.size_device || 14) * 0.65}px">${d.name}</span>
               </div>
             </div>
@@ -227,43 +272,50 @@ class EnergieCard extends LitElement {
     `;
   }
 
-  static styles = css`
-    ha-card { background: #0a0a0a; border-radius: 20px; padding: 18px; color: #fff; border: 2px solid transparent; transition: 0.5s; overflow: hidden; }
-    .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-    .title { font-weight: 900; color: #555; text-transform: uppercase; }
-    .sobriety-badge { font-size: 9px; font-weight: 900; }
-    .main-stats { display: flex; gap: 10px; margin-bottom: 20px; }
-    .stat-box { background: #141414; padding: 12px 5px; border-radius: 12px; flex: 1; text-align: center; position: relative; overflow: hidden; display: flex; flex-direction: column; align-items: center; border: 1px solid #222; }
-    .val { font-weight: 900; margin: 4px 0; z-index: 1; }
-    .mini-socs { display: flex; gap: 4px; z-index: 1; margin-top: 2px; }
-    .mini-socs span { font-size: 7px; color: #666; font-weight: bold; }
-    .sparkline { position: absolute; bottom: 0; left: 0; width: 100%; height: 30px; opacity: 0.4; pointer-events: none; }
-    .sobriety-bar { height: 14px; background: #1a1a1a; border-radius: 6px; position: relative; overflow: hidden; margin-bottom: 20px; border: 1px solid #333; }
-    .sobriety-fill { height: 100%; transition: width 1.5s ease; }
-    .sobriety-text { position: absolute; width: 100%; text-align: center; top: 1px; font-size: 8px; font-weight: 900; }
-    .device-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(135px, 1fr)); gap: 10px; }
-    .device-item { background: #111; padding: 10px; border-radius: 12px; display: flex; align-items: center; gap: 12px; border: 1px solid #222; }
-    .dev-info { display: flex; flex-direction: column; min-width: 0; flex: 1; align-items: flex-start; }
-    .dev-val { font-weight: 900; line-height: 1.1; }
-    .dev-name { color: #777; text-transform: uppercase; font-weight: bold; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .badge { padding: 4px 8px; border-radius: 4px; font-size: 9px; font-weight: 900; }
-    .charge { background: #00ff8815; color: #00ff88; }
-    .discharge { background: #ff4d4d15; color: #ff4d4d; animation: pulse 2s infinite; }
-    @keyframes pulse { 0% { box-shadow: 0 0 0 0 #ff4d4d44; } 70% { box-shadow: 0 0 0 10px #ff4d4d00; } 100% { box-shadow: 0 0 0 0 #ff4d4d00; } }
-    ha-icon { --mdc-icon-size: 22px; color: #00f9f9; flex-shrink: 0; }
-    .dimmed { opacity: 0.3; filter: grayscale(1); }
-  `;
+  static get styles() {
+    return css`
+      ha-card { background: #0a0a0a; border-radius: 20px; padding: 18px; color: #fff; border: 2px solid transparent; transition: 0.5s; overflow: hidden; }
+      .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+      .title { font-weight: 900; color: #555; text-transform: uppercase; transition: 0.3s; }
+      .title-alert { color: #ff4d4d !important; animation: textPulse 2s infinite; }
+      .sobriety-badge { font-size: 9px; font-weight: 900; }
+      .main-stats { display: flex; gap: 10px; margin-bottom: 20px; }
+      .stat-box { background: #141414; padding: 12px 5px; border-radius: 12px; flex: 1; text-align: center; position: relative; overflow: hidden; display: flex; flex-direction: column; align-items: center; border: 1px solid #222; }
+      .val { font-weight: 900; margin: 4px 0; z-index: 1; }
+      .mini-socs { display: flex; gap: 4px; z-index: 1; margin-top: 2px; }
+      .mini-socs span { font-size: 7px; color: #666; font-weight: bold; }
+      .sparkline { position: absolute; bottom: 0; left: 0; width: 100%; height: 30px; opacity: 0.4; pointer-events: none; }
+      .sobriety-bar { height: 14px; background: #1a1a1a; border-radius: 6px; position: relative; overflow: hidden; margin-bottom: 20px; border: 1px solid #333; }
+      .sobriety-fill { height: 100%; transition: width 1.5s ease; }
+      .sobriety-text { position: absolute; width: 100%; text-align: center; top: 1px; font-size: 8px; font-weight: 900; }
+      .device-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(135px, 1fr)); gap: 10px; }
+      .device-item { background: #111; padding: 10px; border-radius: 12px; display: flex; align-items: center; gap: 12px; border: 1px solid #222; }
+      .device-alert { background: #221010; border: 1px solid #441515; animation: alertPulse 2s infinite; }
+      .dev-info { display: flex; flex-direction: column; min-width: 0; flex: 1; align-items: flex-start; }
+      .dev-val { font-weight: 900; line-height: 1.1; }
+      .dev-name { color: #777; text-transform: uppercase; font-weight: bold; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .badge { padding: 4px 8px; border-radius: 4px; font-size: 9px; font-weight: 900; }
+      .charge { background: #00ff8815; color: #00ff88; }
+      .discharge { background: #ff4d4d15; color: #ff4d4d; animation: pulse 2s infinite; }
+      @keyframes pulse { 0% { box-shadow: 0 0 0 0 #ff4d4d44; } 70% { box-shadow: 0 0 0 10px #ff4d4d00; } 100% { box-shadow: 0 0 0 0 #ff4d4d00; } }
+      @keyframes alertPulse { 0% { border-color: #ff4d4d44; } 50% { border-color: #ff4d4dff; } 100% { border-color: #ff4d4d44; } }
+      @keyframes textPulse { 0% { opacity: 0.7; } 50% { opacity: 1; } 100% { opacity: 0.7; } }
+      ha-icon { --mdc-icon-size: 22px; color: #00f9f9; flex-shrink: 0; }
+      .dimmed { opacity: 0.3; filter: grayscale(1); }
+    `;
+  }
 }
 
 // Enregistrement des éléments
-customElements.define("energie-card-editor", EnergieCardEditor);
-customElements.define("energie-card", EnergieCard);
+if (!customElements.get("energie-card")) {
+  customElements.define("energie-card-editor", EnergieCardEditor);
+  customElements.define("energie-card", EnergieCard);
 
-// Ajout de la carte à la liste de sélection de Home Assistant (nécessaire pour HACS)
-window.customCards = window.customCards || [];
-window.customCards.push({
-  type: "energie-card",
-  name: "Energie Card",
-  preview: true,
-  description: "Carte énergie optimisée pour StorCube et Marstek"
-});
+  window.customCards = window.customCards || [];
+  window.customCards.push({
+    type: "energie-card",
+    name: "Energie Card",
+    preview: true,
+    description: "Carte énergie optimisée avec gestion de pannes."
+  });
+}
