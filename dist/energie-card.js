@@ -48,10 +48,13 @@ class EnergieCardEditor extends LitElement {
         { name: "cap_mv", label: "Capacité réelle Marstek (Wh)", selector: { number: { min: 0, max: 10000, mode: "box" } } },
         { name: "talon", label: "Talon Électrique (W)", selector: { number: { min: 0, max: 1000, mode: "box" } } }
       ],
-      [ // APPAREILS
+      [ // APPAREILS & RECOMMANDATION
         { name: "devices", label: "Appareils", selector: { entity: { multiple: true, domain: "sensor" } } },
         { name: "custom_names", label: "Noms personnalisés (Un par ligne)", selector: { text: { multiline: true } } },
-        { name: "kwh_price", label: "Prix du kWh (€)", selector: { number: { min: 0, max: 1, step: 0.0001, mode: "box" } } }
+        { name: "kwh_price", label: "Prix du kWh (€)", selector: { number: { min: 0, max: 1, step: 0.0001, mode: "box" } } },
+        { name: "rec_device_name", label: "Nom du gros appareil à conseiller", selector: { text: {} } },
+        { name: "rec_device_watts", label: "Puissance de cet appareil (W)", selector: { number: { min: 0, max: 4000, mode: "box" } } },
+        { name: "rec_device_icon", label: "Icône MDI (ex: mdi:washing-machine)", selector: { text: {} } }
       ],
       [ // STYLE
         { name: "accent_color", label: "Couleur d'accentuation", selector: { select: { options: [
@@ -178,7 +181,7 @@ class EnergieCard extends LitElement {
           isAlert = true;
           alertLabel = 'ERREUR';
         } else if (val <= 5) {
-          shouldHide = true; // Flag pour masquer l'appareil s'il consomme moins de 5W
+          shouldHide = true;
         }
       }
 
@@ -196,7 +199,7 @@ class EnergieCard extends LitElement {
         name: customNamesArr[index] || (s?.attributes?.friendly_name || backupName) 
       };
     })
-    .filter(d => !d.shouldHide) // Supprime définitivement les appareils à l'arrêt (<= 5W) de la liste d'affichage
+    .filter(d => !d.shouldHide)
     .sort((a, b) => {
       if (a.isAlert && !b.isAlert) return 1;
       if (!a.isAlert && b.isAlert) return -1;
@@ -213,6 +216,16 @@ class EnergieCard extends LitElement {
 
     const baseTitle = solar < 10 ? '🌙 VEILLE' : (c.title || 'ENERGIE');
     const fullTitle = alertCount > 0 ? `${baseTitle} [${alertCount} PANNE${alertCount > 1 ? 'S' : ''}]` : baseTitle;
+
+    // --- LOGIQUE CALCULATEUR INTELLIGENT ---
+    const recDeviceName = c.rec_device_name || "Gros Appareil";
+    const recDeviceWatts = parseFloat(c.rec_device_watts) || 1500;
+    const recDeviceIcon = c.rec_device_icon || "mdi:washing-machine";
+    
+    // Le surplus réel disponible avant d'importer du réseau
+    const currentSurplus = solar - totalCons;
+    const isReadyForDevice = currentSurplus >= recDeviceWatts;
+    const powerDeficit = recDeviceWatts - currentSurplus;
 
     return html`
       <ha-card style="border-color: ${cardStatusColor}66">
@@ -254,7 +267,17 @@ class EnergieCard extends LitElement {
 
         <div class="sobriety-bar">
            <div class="sobriety-fill" style="width: ${sobriety}%; background: ${cardStatusColor}"></div>
-           <span class="sobriety-text">${totalCons <= talon ? 'TALON ATTEINT' : `SURPLUS: +${Math.max(0, totalCons - talon)}W`}</span>
+           <span class="sobriety-text">${totalCons <= talon ? 'TALON ATTEINT' : `SURPLUS: +${Math.max(0, currentSurplus)}W`}</span>
+        </div>
+
+        <div class="recommendation-box ${isReadyForDevice ? 'rec-ready' : 'rec-waiting'}">
+          <ha-icon icon="${recDeviceIcon}" class="${isReadyForDevice ? 'icon-bounce' : ''}"></ha-icon>
+          <div class="rec-text">
+            ${isReadyForDevice 
+              ? html`<strong>PROD. OPTIMALE :</strong> Prêt pour lancer le <span>${recDeviceName}</span> (+${currentSurplus}W libres)`
+              : html`<strong>CONSEIL :</strong> Manque <span>${Math.round(powerDeficit)}W</span> pour lancer le ${recDeviceName}`
+            }
+          </div>
         </div>
 
         <div class="device-list">
@@ -287,9 +310,20 @@ class EnergieCard extends LitElement {
       .mini-socs { display: flex; gap: 4px; z-index: 1; margin-top: 2px; }
       .mini-socs span { font-size: 7px; color: #666; font-weight: bold; }
       .sparkline { position: absolute; bottom: 0; left: 0; width: 100%; height: 30px; opacity: 0.4; pointer-events: none; }
-      .sobriety-bar { height: 14px; background: #1a1a1a; border-radius: 6px; position: relative; overflow: hidden; margin-bottom: 20px; border: 1px solid #333; }
+      .sobriety-bar { height: 14px; background: #1a1a1a; border-radius: 6px; position: relative; overflow: hidden; margin-bottom: 12px; border: 1px solid #333; }
       .sobriety-fill { height: 100%; transition: width 1.5s ease; }
       .sobriety-text { position: absolute; width: 100%; text-align: center; top: 1px; font-size: 8px; font-weight: 900; }
+      
+      /* STYLES ZONE RECOMMANDATION */
+      .recommendation-box { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 10px; font-size: 11px; margin-bottom: 20px; border: 1px solid transparent; transition: 0.4s ease; }
+      .rec-ready { background: #00ff8810; border-color: #00ff8833; color: #88ffcc; }
+      .rec-ready ha-icon { color: #00ff88 !important; }
+      .rec-ready span { color: #00ff88; font-weight: bold; text-transform: uppercase; }
+      .rec-waiting { background: #141414; border-color: #222; color: #888; }
+      .rec-waiting ha-icon { color: #555 !important; }
+      .rec-waiting span { color: #ff9500; font-weight: bold; }
+      .rec-text { line-height: 1.3; }
+      
       .device-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(135px, 1fr)); gap: 10px; }
       .device-item { background: #111; padding: 10px; border-radius: 12px; display: flex; align-items: center; gap: 12px; border: 1px solid #222; }
       .device-alert { background: #221010; border: 1px solid #441515; animation: alertPulse 2s infinite; }
@@ -299,9 +333,14 @@ class EnergieCard extends LitElement {
       .badge { padding: 4px 8px; border-radius: 4px; font-size: 9px; font-weight: 900; }
       .charge { background: #00ff8815; color: #00ff88; }
       .discharge { background: #ff4d4d15; color: #ff4d4d; animation: pulse 2s infinite; }
+      
+      /* ANIMATIONS */
       @keyframes pulse { 0% { box-shadow: 0 0 0 0 #ff4d4d44; } 70% { box-shadow: 0 0 0 10px #ff4d4d00; } 100% { box-shadow: 0 0 0 0 #ff4d4d00; } }
       @keyframes alertPulse { 0% { border-color: #ff4d4d44; } 50% { border-color: #ff4d4dff; } 100% { border-color: #ff4d4d44; } }
       @keyframes textPulse { 0% { opacity: 0.7; } 50% { opacity: 1; } 100% { opacity: 0.7; } }
+      .icon-bounce { animation: bounce 2s infinite; }
+      @keyframes bounce { 0%, 20%, 50%, 80%, 100% { transform: translateY(0); } 40% { transform: translateY(-4px); } 60% { transform: translateY(-2px); } }
+      
       ha-icon { --mdc-icon-size: 22px; color: #00f9f9; flex-shrink: 0; }
       .dimmed { opacity: 0.3; filter: grayscale(1); }
     `;
@@ -318,6 +357,6 @@ if (!customElements.get("energie-card")) {
     type: "energie-card",
     name: "Energie Card",
     preview: true,
-    description: "Carte énergie optimisée avec masquage automatique des arrêts."
+    description: "Carte énergie avec gestion d'alertes et conseil d'autoconsommation."
   });
 }
