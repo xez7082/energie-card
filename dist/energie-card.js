@@ -215,7 +215,7 @@ class EnergieCard extends LitElement {
           isAlert = true;
           alertLabel = 'ERREUR';
         } else if (val <= 5) {
-          shouldHide = true;
+          shouldHide = false;   // appareils en veille affichés (grisés)
         }
       }
 
@@ -228,6 +228,7 @@ class EnergieCard extends LitElement {
         state: val, 
         stateObj: s,
         isAlert: isAlert,
+        isIdle: !isAlert && val <= 5,
         shouldHide: shouldHide,
         alertType: alertLabel,
         name: customNamesArr[index] || (s?.attributes?.friendly_name || backupName) 
@@ -237,6 +238,8 @@ class EnergieCard extends LitElement {
     .sort((a, b) => {
       if (a.isAlert && !b.isAlert) return 1;
       if (!a.isAlert && b.isAlert) return -1;
+      if (a.isIdle && !b.isIdle) return 1;
+      if (!a.isIdle && b.isIdle) return -1;
       return b.state - a.state;
     });
 
@@ -343,17 +346,19 @@ class EnergieCard extends LitElement {
         ${recommendationHTML}
 
         <div class="device-list">
-          ${activeDevices.map(d => html`
-            <div class="device-item ${d.isAlert ? 'device-alert' : ''}" style="border-left: 3px solid ${d.isAlert ? '#ff4d4d' : this._getPowerColor(d.state)}">
-              <ha-icon icon="${d.isAlert ? 'mdi:alert-circle' : (d.stateObj?.attributes?.icon || 'mdi:flash')}" style="color: ${d.isAlert ? '#ff4d4d' : this._getPowerColor(d.state)}"></ha-icon>
+          ${activeDevices.map(d => {
+            const col = d.isAlert ? '#ff4d4d' : d.isIdle ? '#556070' : this._getPowerColor(d.state);
+            return html`
+            <div class="device-item ${d.isAlert ? 'device-alert' : ''}" style="border-left: 3px solid ${col}; ${d.isIdle ? 'opacity:.55;' : ''}">
+              <ha-icon icon="${d.isAlert ? 'mdi:alert-circle' : (d.stateObj?.attributes?.icon || 'mdi:flash')}" style="color: ${col}"></ha-icon>
               <div class="dev-info">
-                 <span class="dev-val" style="color: ${d.isAlert ? '#ff4d4d' : this._getPowerColor(d.state)}; font-size: ${c.size_device || 14}px">
-                   ${d.isAlert ? d.alertType : `${Math.round(d.state)}W`}
+                 <span class="dev-val" style="color: ${col}; font-size: ${c.size_device || 14}px">
+                   ${d.isAlert ? d.alertType : d.isIdle ? 'VEILLE' : `${Math.round(d.state)}W`}
                  </span>
                  <span class="dev-name" style="font-size: ${(c.size_device || 14) * 0.65}px">${d.name}</span>
               </div>
             </div>
-          `)}
+          `;})}
         </div>
       </ha-card>
     `;
